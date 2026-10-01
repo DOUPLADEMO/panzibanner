@@ -1,0 +1,981 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600&amp;family=Inter:wght@400;600&amp;family=JetBrains+Mono:wght@400&amp;display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<style>
+body{margin:0;background:#FAF6EE;-webkit-font-smoothing:antialiased;}
+*{box-sizing:border-box;}
+a{color:#3B4A2C;}
+a:hover{color:#B85C38;}
+input,select,textarea,button{font-family:inherit;}
+</style>
+</helmet>
+<div style="min-height:100vh;background:#FAF6EE;color:#3B4A2C;font-family:Inter, system-ui, sans-serif;font-size:14px;line-height:1.45;">
+
+<header style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;padding:10px 20px;border-bottom:1px solid rgba(59,74,44,.14);background:#FFFFFF;position:sticky;top:0;z-index:30;">
+  <div style="display:flex;align-items:center;gap:12px;">
+    <img src="assets/logo-red.png" alt="FitActive" style="height:36px;width:auto;display:block;">
+    <div style="width:1px;height:30px;background:rgba(59,74,44,.18);"></div>
+    <div style="display:flex;flex-direction:column;line-height:1.2;">
+      <span style="font-family:Fraunces, Georgia, serif;font-weight:600;font-size:17px;">Bannerkészítő</span>
+      <span style="font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:#B85C38;font-weight:600;">Originals · Wheat-Free</span>
+    </div>
+  </div>
+  <input value="{{ doc.projectName }}" onChange="{{ onProjectName }}" aria-label="Projekt neve" style="flex:1 1 160px;min-width:120px;max-width:300px;border:1px solid rgba(59,74,44,.14);background:#FAF6EE;border-radius:8px;padding:8px 10px;font-size:14px;color:#3B4A2C;" style-focus="border-color:#3B4A2C;outline:none;">
+  <div style="display:flex;align-items:center;gap:8px;margin-left:auto;flex-wrap:wrap;">
+    <button onClick="{{ undo }}" title="Visszavonás (Ctrl+Z)" style="border:1px solid rgba(59,74,44,.2);background:#FFFFFF;color:#3B4A2C;border-radius:999px;padding:8px 14px;font-size:13px;font-weight:600;cursor:pointer;opacity:{{ undoOp }};min-height:38px;">↶ Vissza</button>
+    <button onClick="{{ redo }}" title="Újra (Ctrl+Shift+Z)" style="border:1px solid rgba(59,74,44,.2);background:#FFFFFF;color:#3B4A2C;border-radius:999px;padding:8px 14px;font-size:13px;font-weight:600;cursor:pointer;opacity:{{ redoOp }};min-height:38px;">Újra ↷</button>
+    <button onClick="{{ bulkTg.toggle }}" style="display:flex;align-items:center;gap:8px;border:1px solid rgba(59,74,44,.2);background:{{ bulkTg.bg }};color:#3B4A2C;border-radius:999px;padding:6px 14px 6px 8px;font-size:13px;font-weight:600;cursor:pointer;min-height:38px;">
+      <span style="width:34px;height:20px;border-radius:10px;background:{{ bulkTg.track }};position:relative;flex:0 0 auto;transition:background .15s;"><span style="position:absolute;top:3px;left:{{ bulkTg.knob }};width:14px;height:14px;border-radius:50%;background:#FFFFFF;transition:left .15s;"></span></span>
+      Tömeges mód
+    </button>
+    <button onClick="{{ openProjects }}" style="border:1.5px solid #3B4A2C;background:transparent;color:#3B4A2C;border-radius:999px;padding:8px 16px;font-size:13px;font-weight:600;cursor:pointer;min-height:38px;">Projektek</button>
+    <button onClick="{{ saveProject }}" style="border:0;background:#3B4A2C;color:#FAF6EE;border-radius:999px;padding:9px 18px;font-size:13px;font-weight:600;cursor:pointer;min-height:38px;" style-hover="background:#2E3A22;">Mentés</button>
+  </div>
+</header>
+
+<div style="display:flex;flex-direction:{{ L.dir }};align-items:stretch;min-height:calc(100vh - 60px);">
+
+  <nav style="flex:0 0 auto;width:{{ L.navW }};padding:{{ L.navPad }};border-right:{{ L.navBorderR }};border-bottom:{{ L.navBorderB }};display:flex;flex-direction:{{ L.navDir }};gap:6px;overflow-x:auto;background:#FAF6EE;">
+    <sc-for list="{{ steps }}" as="s" hint-placeholder-count="4">
+      <button onClick="{{ s.go }}" style="display:flex;align-items:center;gap:12px;text-align:left;border:0;cursor:pointer;padding:10px 12px;border-radius:12px;background:{{ s.bg }};color:{{ s.fg }};flex:0 0 auto;min-height:48px;">
+        <span style="width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:600;font-size:13px;border:1.5px solid {{ s.ring }};background:{{ s.dotBg }};color:{{ s.dotFg }};flex:0 0 auto;">{{ s.mark }}</span>
+        <span style="display:flex;flex-direction:column;gap:1px;">
+          <span style="font-weight:600;font-size:14px;white-space:nowrap;">{{ s.t }}</span>
+          <span style="font-size:12px;display:{{ L.stepDesc }};color:{{ s.sub }};">{{ s.d }}</span>
+        </span>
+      </button>
+    </sc-for>
+    <sc-if value="{{ L.desk }}">
+      <div style="margin-top:18px;padding:14px;border-radius:12px;background:#F2EADB;display:flex;flex-direction:column;gap:6px;font-size:12.5px;">
+        <span style="font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;font-weight:600;">Kampány</span>
+        <span>{{ summary.imgs }}</span>
+        <span>{{ summary.prods }}</span>
+        <span>{{ summary.tpl }}</span>
+        <span>{{ summary.sizes }}</span>
+        <span style="font-weight:600;margin-top:4px;">{{ summary.total }}</span>
+      </div>
+    </sc-if>
+  </nav>
+
+  <main style="flex:1 1 auto;min-width:0;padding:{{ L.mainPad }};display:flex;flex-direction:column;gap:20px;">
+
+    <sc-if value="{{ is1 }}" hint-placeholder-val="{{ true }}">
+      <section data-screen-label="01 Képek" style="display:flex;flex-direction:column;gap:14px;max-width:880px;">
+        <div style="display:flex;flex-direction:column;gap:4px;">
+          <span style="font-size:11px;letter-spacing:.14em;text-transform:uppercase;font-weight:600;color:#B85C38;">1. lépés</span>
+          <h1 style="margin:0;font-family:Fraunces, Georgia, serif;font-weight:600;font-size:26px;line-height:1.1;">Képek</h1>
+          <p style="margin:0;color:#5A6450;font-size:13.5px;text-wrap:pretty;">Töltsd fel a fotókat, majd kattints a képen arra a pontra, aminek mindig látszania kell.</p>
+        </div>
+
+        <div style="display:flex;flex-wrap:wrap;gap:10px;align-items:stretch;">
+          <div onDragOver="{{ onDragOver }}" onDragLeave="{{ onDragLeave }}" onDrop="{{ onDrop }}" onClick="{{ pickFiles }}" style="width:96px;height:96px;flex:0 0 auto;border:2px dashed {{ dz.border }};background:{{ dz.bg }};border-radius:12px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;cursor:pointer;text-align:center;transition:background .15s;">
+            <span style="font-size:26px;line-height:1;font-weight:400;">+</span>
+            <span style="font-size:11.5px;font-weight:600;line-height:1.2;">Kép<br>hozzáadása</span>
+            <input type="file" multiple="" accept="image/jpeg,image/png,image/webp" ref="{{ fileRef }}" onChange="{{ onFileInput }}" style="display:none;">
+          </div>
+          <sc-for list="{{ imageCards }}" as="im" hint-placeholder-count="0">
+            <div onClick="{{ im.select }}" title="{{ im.name }}" style="position:relative;width:96px;height:96px;flex:0 0 auto;border-radius:12px;overflow:hidden;cursor:pointer;border:2px solid {{ im.border }};background:#F2EADB;">
+              <img src="{{ im.src }}" alt="" style="width:100%;height:100%;object-fit:cover;object-position:{{ im.pos }};display:block;">
+              <button onClick="{{ im.remove }}" title="Eltávolítás" style="position:absolute;top:4px;right:4px;width:22px;height:22px;border-radius:50%;border:0;background:rgba(255,255,255,.92);color:#3B4A2C;font-size:13px;cursor:pointer;line-height:1;padding:0;">×</button>
+              <sc-if value="{{ im.hasPairs }}">
+                <span style="position:absolute;left:4px;bottom:4px;background:#3B4A2C;color:#FAF6EE;border-radius:999px;padding:1px 7px;font-size:10.5px;font-weight:600;">{{ im.pairText }}</span>
+              </sc-if>
+            </div>
+          </sc-for>
+        </div>
+        <sc-if value="{{ noImages }}">
+          <span style="font-size:12.5px;color:#5A6450;">Kép nélkül is továbbléphetsz: az ár-kártya és a termékcsalád sablonhoz nem kell fotó.</span>
+        </sc-if>
+
+        <sc-if value="{{ hasImages }}">
+          <div style="background:#FFFFFF;border-radius:14px;border:1px solid rgba(59,74,44,.12);padding:14px;display:flex;flex-wrap:wrap;gap:16px;align-items:flex-start;">
+            <div style="position:relative;display:inline-block;line-height:0;max-width:100%;flex:0 1 auto;">
+              <img src="{{ act.src }}" alt="" onClick="{{ setFocus }}" style="max-width:100%;max-height:240px;width:auto;height:auto;display:block;cursor:crosshair;border-radius:8px;">
+              <span style="position:absolute;left:{{ act.fxp }};top:{{ act.fyp }};width:22px;height:22px;margin:-11px 0 0 -11px;border-radius:50%;border:3px solid #FAF6EE;box-shadow:0 0 0 2px #3B4A2C;pointer-events:none;"></span>
+            </div>
+            <div style="flex:1 1 220px;min-width:0;display:flex;flex-direction:column;gap:10px;">
+              <label style="display:flex;flex-direction:column;gap:4px;">
+                <span style="font-size:12px;font-weight:600;">A kutya neve (nem kötelező)</span>
+                <input value="{{ act.label }}" onChange="{{ onActLabel }}" placeholder="pl. Bogyó" style="border:1px solid rgba(59,74,44,.2);border-radius:8px;padding:8px 10px;font-size:14px;font-weight:600;color:#3B4A2C;background:#FAF6EE;width:100%;min-height:40px;">
+              </label>
+              <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:flex-end;">
+                <sc-for list="{{ cropPreviews }}" as="cp" hint-placeholder-count="4">
+                  <div style="display:flex;flex-direction:column;gap:3px;align-items:center;">
+                    <div style="width:{{ cp.w }};height:{{ cp.h }};border-radius:4px;overflow:hidden;background:#F2EADB;">
+                      <img src="{{ act.src }}" alt="" style="width:100%;height:100%;object-fit:cover;object-position:{{ act.pos }};display:block;">
+                    </div>
+                    <span style="font-family:JetBrains Mono, monospace;font-size:10px;color:#5A6450;">{{ cp.label }}</span>
+                  </div>
+                </sc-for>
+              </div>
+              <span style="font-size:12px;color:#5A6450;">Kattints a képre a fókuszpont áthelyezéséhez.</span>
+            </div>
+          </div>
+        </sc-if>
+      </section>
+    </sc-if>
+
+    <sc-if value="{{ is2 }}">
+      <section data-screen-label="02 Termék" style="display:flex;flex-direction:column;gap:18px;">
+        <div style="display:flex;flex-direction:column;gap:4px;">
+          <span style="font-size:11px;letter-spacing:.14em;text-transform:uppercase;font-weight:600;color:#B85C38;">2. lépés</span>
+          <h1 style="margin:0;font-family:Fraunces, Georgia, serif;font-weight:600;font-size:30px;line-height:1.1;">Termék</h1>
+          <p style="margin:0;max-width:640px;color:#5A6450;text-wrap:pretty;">Válassz egy vagy több receptet. Az utoljára kattintott termék látszik az előnézetben.</p>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(176px,1fr));gap:12px;">
+          <sc-for list="{{ productCards }}" as="p" hint-placeholder-count="5">
+            <button onClick="{{ p.toggle }}" style="text-align:left;background:#FFFFFF;border:2px solid {{ p.border }};border-radius:14px;padding:0;overflow:hidden;cursor:pointer;display:flex;flex-direction:column;color:#3B4A2C;">
+              <div style="position:relative;background:#F2EADB;height:200px;display:flex;align-items:flex-end;justify-content:center;padding:14px 10px 10px;width:100%;">
+                <img src="{{ p.img }}" alt="{{ p.short }}" style="height:100%;width:auto;max-width:100%;object-fit:contain;display:block;filter:drop-shadow(0 6px 8px rgba(30,36,22,.22));">
+                <span style="position:absolute;top:10px;left:10px;width:24px;height:24px;border-radius:7px;border:1.5px solid #3B4A2C;background:{{ p.checkBg }};color:#FAF6EE;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:600;">{{ p.mark }}</span>
+              </div>
+              <div style="padding:12px 12px 14px;display:flex;flex-direction:column;gap:4px;width:100%;">
+                <span style="font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;font-weight:600;color:#B85C38;">{{ p.age }}</span>
+                <span style="font-family:Fraunces, Georgia, serif;font-weight:600;font-size:16px;line-height:1.2;">{{ p.recipe }}</span>
+                <span style="font-size:12.5px;">{{ p.protein }}% fehérje · {{ p.fat }}% zsír</span>
+                <span style="font-size:12px;color:#5A6450;">Arc: {{ p.dog }} · {{ p.breed }}</span>
+              </div>
+            </button>
+          </sc-for>
+        </div>
+
+        <sc-if value="{{ hasImages }}">
+          <div style="background:#FFFFFF;border-radius:16px;border:1px solid rgba(59,74,44,.12);padding:18px;display:flex;flex-direction:column;gap:14px;">
+            <div style="display:flex;flex-direction:column;gap:2px;">
+              <span style="font-family:Fraunces, Georgia, serif;font-weight:600;font-size:18px;">Kép + termék párosítás</span>
+              <span style="font-size:13px;color:#5A6450;">A mentett párok a projektben maradnak, és tömeges módban csak ezeket is legenerálhatod.</span>
+            </div>
+            <div style="display:flex;flex-wrap:wrap;gap:10px;align-items:center;">
+              <img src="{{ pairThumb }}" alt="" style="width:52px;height:52px;border-radius:8px;object-fit:cover;background:#F2EADB;">
+              <select value="{{ pairImgVal }}" onChange="{{ onPairImg }}" style="flex:1 1 160px;min-width:0;padding:10px;border-radius:8px;border:1px solid rgba(59,74,44,.2);background:#FAF6EE;color:#3B4A2C;font-size:14px;min-height:44px;">
+                <sc-for list="{{ pairImgOpts }}" as="o"><option value="{{ o.v }}">{{ o.t }}</option></sc-for>
+              </select>
+              <span style="font-weight:600;">+</span>
+              <select value="{{ pairProdVal }}" onChange="{{ onPairProd }}" style="flex:1 1 180px;min-width:0;padding:10px;border-radius:8px;border:1px solid rgba(59,74,44,.2);background:#FAF6EE;color:#3B4A2C;font-size:14px;min-height:44px;">
+                <sc-for list="{{ pairProdOpts }}" as="o"><option value="{{ o.v }}">{{ o.t }}</option></sc-for>
+              </select>
+              <button onClick="{{ savePair }}" style="border:0;background:#3B4A2C;color:#FAF6EE;border-radius:999px;padding:10px 18px;font-size:13px;font-weight:600;cursor:pointer;min-height:44px;">Páros mentése</button>
+            </div>
+            <sc-if value="{{ pairHint.show }}">
+              <div style="display:flex;flex-wrap:wrap;gap:10px;align-items:center;padding:10px 12px;border-radius:10px;background:#F2EADB;font-size:13px;">
+                <span>{{ pairHint.text }}</span>
+                <button onClick="{{ pairHint.apply }}" style="border:1.5px solid #3B4A2C;background:transparent;color:#3B4A2C;border-radius:999px;padding:5px 12px;font-size:12.5px;font-weight:600;cursor:pointer;">Párosítás</button>
+              </div>
+            </sc-if>
+            <sc-if value="{{ hasPairs }}">
+              <div style="display:flex;flex-wrap:wrap;gap:8px;">
+                <sc-for list="{{ pairChips }}" as="pc">
+                  <span style="display:flex;align-items:center;gap:6px;background:#FAF6EE;border:1px solid rgba(59,74,44,.2);border-radius:999px;padding:5px 6px 5px 12px;font-size:13px;font-weight:600;">
+                    {{ pc.label }}
+                    <button onClick="{{ pc.remove }}" title="Páros törlése" style="width:24px;height:24px;border-radius:50%;border:0;background:#F2EADB;color:#3B4A2C;cursor:pointer;">×</button>
+                  </span>
+                </sc-for>
+              </div>
+            </sc-if>
+          </div>
+        </sc-if>
+      </section>
+    </sc-if>
+
+    <sc-if value="{{ is3 }}">
+      <section data-screen-label="03 Sablon + szöveg" style="display:flex;flex-direction:column;gap:18px;">
+        <div style="display:flex;flex-direction:column;gap:4px;">
+          <span style="font-size:11px;letter-spacing:.14em;text-transform:uppercase;font-weight:600;color:#B85C38;">3. lépés</span>
+          <h1 style="margin:0;font-family:Fraunces, Georgia, serif;font-weight:600;font-size:30px;line-height:1.1;">Sablon és szöveg</h1>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px;">
+          <sc-for list="{{ tplCards }}" as="t" hint-placeholder-count="4">
+            <button onClick="{{ t.pick }}" style="text-align:left;background:#FFFFFF;border:2px solid {{ t.border }};border-radius:14px;padding:8px;cursor:pointer;display:flex;flex-direction:column;gap:8px;color:#3B4A2C;">
+              <div style="aspect-ratio:4/5;width:100%;border-radius:8px;overflow:hidden;background:#F2EADB;">
+                <sc-if value="{{ t.has }}"><img src="{{ t.thumb }}" alt="" style="width:100%;height:100%;display:block;"></sc-if>
+              </div>
+              <span style="display:flex;flex-direction:column;gap:1px;padding:0 4px 4px;">
+                <span style="font-weight:600;font-size:14px;">{{ t.letter }} · {{ t.name }}</span>
+                <span style="font-size:12px;color:#5A6450;">{{ t.d }}</span>
+              </span>
+            </button>
+          </sc-for>
+        </div>
+
+        <sc-if value="{{ showPanel }}">
+          <div style="display:flex;flex-wrap:wrap;gap:10px;align-items:center;">
+            <span style="font-weight:600;min-width:110px;">Panelszín</span>
+            <sc-for list="{{ panelOpts }}" as="po">
+              <button onClick="{{ po.pick }}" style="display:flex;align-items:center;gap:8px;border:2px solid {{ po.border }};background:#FFFFFF;border-radius:999px;padding:5px 14px 5px 6px;font-size:13px;font-weight:600;cursor:pointer;color:#3B4A2C;min-height:40px;">
+                <span style="width:26px;height:26px;border-radius:50%;background:{{ po.sw }};border:1px solid rgba(59,74,44,.25);"></span>{{ po.label }}
+              </button>
+            </sc-for>
+            <span style="font-size:12.5px;color:#5A6450;">Olíván és terrakottán a szöveg automatikusan világos.</span>
+          </div>
+        </sc-if>
+
+        <div style="background:#FFFFFF;border-radius:16px;border:1px solid rgba(59,74,44,.12);padding:18px;display:flex;flex-direction:column;gap:16px;">
+          <div style="display:flex;flex-direction:column;gap:6px;">
+            <div style="display:flex;justify-content:space-between;align-items:baseline;gap:10px;">
+              <label style="font-weight:600;">{{ hlLabel }}</label>
+              <span style="font-family:JetBrains Mono, monospace;font-size:11.5px;color:{{ hlCountColor }};">{{ hlCount }}</span>
+            </div>
+            <textarea value="{{ doc.headline }}" onChange="{{ onHeadline }}" maxLength="60" rows="2" style="width:100%;resize:vertical;padding:10px 12px;border-radius:10px;border:1px solid rgba(59,74,44,.2);background:#FAF6EE;color:#3B4A2C;font-family:Fraunces, Georgia, serif;font-weight:600;font-size:19px;line-height:1.25;" style-focus="outline:none;border-color:#3B4A2C;"></textarea>
+            <div style="display:flex;flex-wrap:wrap;gap:8px;">
+              <select value="" onChange="{{ onBank }}" style="flex:1 1 220px;min-width:0;padding:9px 10px;border-radius:8px;border:1px solid rgba(59,74,44,.2);background:#FFFFFF;color:#3B4A2C;font-size:13.5px;min-height:42px;">
+                <option value="">Szövegbankból…</option>
+                <sc-for list="{{ bank }}" as="b"><option value="{{ b.v }}">{{ b.v }}</option></sc-for>
+              </select>
+              <button onClick="{{ suggest }}" style="border:1.5px solid #B85C38;background:transparent;color:#8E4426;border-radius:999px;padding:8px 16px;font-size:13px;font-weight:600;cursor:pointer;min-height:42px;">{{ suggestLabel }}</button>
+            </div>
+            <sc-if value="{{ hasSuggestions }}">
+              <div style="display:flex;flex-direction:column;gap:6px;">
+                <sc-for list="{{ suggestions }}" as="sg">
+                  <button onClick="{{ sg.use }}" style="text-align:left;border:1px dashed rgba(184,92,56,.6);background:#FAF6EE;color:#3B4A2C;border-radius:10px;padding:9px 12px;font-family:Fraunces, Georgia, serif;font-weight:600;font-size:15px;cursor:pointer;" style-hover="background:#F2EADB;">{{ sg.t }}</button>
+                </sc-for>
+              </div>
+            </sc-if>
+            <sc-for list="{{ hlWarn }}" as="w">
+              <span style="display:flex;gap:8px;align-items:flex-start;background:#FBEFC4;color:#5C4708;border-radius:8px;padding:7px 10px;font-size:12.5px;"><span style="font-weight:600;">!</span>{{ w.t }}</span>
+            </sc-for>
+          </div>
+
+          <sc-if value="{{ showClosing }}">
+            <div style="display:flex;flex-wrap:wrap;gap:12px;">
+              <div style="flex:1 1 220px;display:flex;flex-direction:column;gap:6px;">
+                <div style="display:flex;justify-content:space-between;"><label style="font-weight:600;">Záró sor</label><span style="font-family:JetBrains Mono, monospace;font-size:11.5px;color:#5A6450;">{{ clCount }}</span></div>
+                <input value="{{ doc.closing }}" onChange="{{ onClosing }}" maxLength="40" style="padding:10px 12px;border-radius:10px;border:1px solid rgba(59,74,44,.2);background:#FAF6EE;color:#3B4A2C;font-size:14px;min-height:44px;">
+              </div>
+              <div style="flex:1 1 160px;display:flex;flex-direction:column;gap:6px;">
+                <label style="font-weight:600;">Web</label>
+                <input value="{{ doc.url }}" onChange="{{ onUrl }}" maxLength="30" style="padding:10px 12px;border-radius:10px;border:1px solid rgba(59,74,44,.2);background:#FAF6EE;color:#3B4A2C;font-size:14px;min-height:44px;">
+              </div>
+            </div>
+            <sc-for list="{{ clWarn }}" as="w">
+              <span style="display:flex;gap:8px;background:#FBEFC4;color:#5C4708;border-radius:8px;padding:7px 10px;font-size:12.5px;"><span style="font-weight:600;">!</span>{{ w.t }}</span>
+            </sc-for>
+          </sc-if>
+          <sc-if value="{{ showUrlOnly }}">
+            <div style="display:flex;flex-direction:column;gap:6px;max-width:320px;">
+              <label style="font-weight:600;">Web</label>
+              <input value="{{ doc.url }}" onChange="{{ onUrl }}" maxLength="30" style="padding:10px 12px;border-radius:10px;border:1px solid rgba(59,74,44,.2);background:#FAF6EE;color:#3B4A2C;font-size:14px;min-height:44px;">
+            </div>
+          </sc-if>
+
+          <sc-if value="{{ showClaims }}">
+            <div style="display:flex;flex-direction:column;gap:8px;">
+              <span style="font-weight:600;">Claim-címkék</span>
+              <div style="display:flex;flex-wrap:wrap;gap:8px;">
+                <sc-for list="{{ claimChips }}" as="c">
+                  <button onClick="{{ c.toggle }}" style="display:flex;align-items:center;gap:6px;border:1.5px solid #3B4A2C;background:{{ c.bg }};color:{{ c.fg }};border-radius:999px;padding:5px 14px 5px 6px;font-size:13px;font-weight:600;cursor:pointer;min-height:38px;">
+                    <img src="{{ c.icon }}" alt="" style="width:26px;height:26px;display:block;border-radius:50%;background:#FFFFFF;">{{ c.label }}
+                  </button>
+                </sc-for>
+              </div>
+              <span style="font-size:12px;color:#5A6450;">A táp nem gluténmentes, ezért ilyen címke nem választható.</span>
+            </div>
+          </sc-if>
+
+          <sc-if value="{{ isPrice }}">
+            <div style="display:flex;flex-wrap:wrap;gap:12px;">
+              <div style="flex:1 1 140px;display:flex;flex-direction:column;gap:6px;">
+                <label style="font-weight:600;">Ár · 4 kg</label>
+                <div style="display:flex;align-items:center;border:1px solid rgba(59,74,44,.2);border-radius:10px;background:#FAF6EE;padding-right:12px;"><input value="{{ doc.price4 }}" onChange="{{ onPrice4 }}" maxLength="9" style="flex:1;min-width:0;border:0;background:transparent;padding:10px 12px;font-size:15px;font-family:Fraunces, Georgia, serif;font-weight:600;color:#3B4A2C;min-height:44px;outline:none;"><span style="font-weight:600;">Ft</span></div>
+              </div>
+              <div style="flex:1 1 140px;display:flex;flex-direction:column;gap:6px;">
+                <label style="font-weight:600;">Ár · 12 kg</label>
+                <div style="display:flex;align-items:center;border:1px solid rgba(59,74,44,.2);border-radius:10px;background:#FAF6EE;padding-right:12px;"><input value="{{ doc.price12 }}" onChange="{{ onPrice12 }}" maxLength="9" style="flex:1;min-width:0;border:0;background:transparent;padding:10px 12px;font-size:15px;font-family:Fraunces, Georgia, serif;font-weight:600;color:#3B4A2C;min-height:44px;outline:none;"><span style="font-weight:600;">Ft</span></div>
+              </div>
+            </div>
+          </sc-if>
+
+          <div style="display:flex;flex-wrap:wrap;gap:4px 24px;">
+            <sc-for list="{{ textToggles }}" as="x">
+              <button onClick="{{ x.toggle }}" style="display:flex;align-items:center;gap:10px;border:0;background:transparent;padding:6px 0;cursor:pointer;color:#3B4A2C;font-size:13.5px;text-align:left;min-height:40px;opacity:{{ x.op }};">
+                <span style="width:38px;height:22px;border-radius:11px;background:{{ x.track }};position:relative;flex:0 0 auto;transition:background .15s;"><span style="position:absolute;top:3px;left:{{ x.knob }};width:16px;height:16px;border-radius:50%;background:#FFFFFF;transition:left .15s;"></span></span>
+                <span>{{ x.label }}</span>
+              </button>
+            </sc-for>
+          </div>
+        </div>
+
+        <div style="background:#FFFFFF;border-radius:16px;border:1px solid rgba(59,74,44,.12);padding:18px;display:flex;flex-direction:column;gap:12px;">
+          <span style="font-family:Fraunces, Georgia, serif;font-weight:600;font-size:18px;">Logó</span>
+          <div style="display:flex;flex-wrap:wrap;gap:8px;">
+            <sc-for list="{{ logoOpts }}" as="lo">
+              <button onClick="{{ lo.pick }}" style="display:flex;align-items:center;gap:8px;border:2px solid {{ lo.border }};background:#FFFFFF;border-radius:999px;padding:5px 14px 5px 6px;font-size:13px;font-weight:600;cursor:pointer;color:#3B4A2C;min-height:40px;">
+                <span style="width:26px;height:26px;border-radius:50%;background:{{ lo.sw }};border:1px solid rgba(59,74,44,.25);"></span>{{ lo.label }}
+              </button>
+            </sc-for>
+          </div>
+          <span style="font-size:13px;color:#3B4A2C;">{{ logoAdvice }}</span>
+          <sc-if value="{{ logoForced }}">
+            <div style="background:#FBEFC4;color:#5C4708;border-radius:10px;padding:9px 12px;font-size:13px;">Ezen az alapon a választott logóváltozat nem jóváhagyott, ezért a brand book szerinti változat kerül a bannerre.</div>
+          </sc-if>
+          <sc-if value="{{ logoWeak }}">
+            <div style="display:flex;flex-wrap:wrap;gap:10px;align-items:center;background:#FBEFC4;color:#5C4708;border-radius:10px;padding:9px 12px;font-size:13px;">
+              <span>Gyenge a kontraszt a logó mögött. Egy finom sötétítés segít.</span>
+              <button onClick="{{ scrimOn }}" style="border:0;background:#3B4A2C;color:#FAF6EE;border-radius:999px;padding:6px 14px;font-size:12.5px;font-weight:600;cursor:pointer;">Sötétítés bekapcsolása</button>
+            </div>
+          </sc-if>
+          <button onClick="{{ scrimTg.toggle }}" style="display:flex;align-items:center;gap:10px;border:0;background:transparent;padding:4px 0;cursor:pointer;color:#3B4A2C;font-size:13.5px;text-align:left;min-height:40px;">
+            <span style="width:38px;height:22px;border-radius:11px;background:{{ scrimTg.track }};position:relative;flex:0 0 auto;transition:background .15s;"><span style="position:absolute;top:3px;left:{{ scrimTg.knob }};width:16px;height:16px;border-radius:50%;background:#FFFFFF;transition:left .15s;"></span></span>
+            <span>Finom sötétítés a logó mögött (fotón)</span>
+          </button>
+        </div>
+      </section>
+    </sc-if>
+
+    <sc-if value="{{ is4 }}">
+      <section data-screen-label="04 Méretek + export" style="display:flex;flex-direction:column;gap:18px;">
+        <div style="display:flex;flex-direction:column;gap:4px;">
+          <span style="font-size:11px;letter-spacing:.14em;text-transform:uppercase;font-weight:600;color:#B85C38;">4. lépés</span>
+          <h1 style="margin:0;font-family:Fraunces, Georgia, serif;font-weight:600;font-size:30px;line-height:1.1;">Méretek és export</h1>
+        </div>
+
+        <div style="display:flex;flex-wrap:wrap;gap:14px;">
+          <div style="flex:2 1 380px;min-width:0;background:#FFFFFF;border-radius:16px;border:1px solid rgba(59,74,44,.12);padding:18px;display:flex;flex-direction:column;gap:14px;">
+            <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;">
+              <span style="font-weight:600;margin-right:4px;">Csomagok</span>
+              <button onClick="{{ packMeta }}" style="border:1.5px solid #3B4A2C;background:transparent;color:#3B4A2C;border-radius:999px;padding:6px 14px;font-size:12.5px;font-weight:600;cursor:pointer;min-height:36px;">Meta csomag</button>
+              <button onClick="{{ packFull }}" style="border:1.5px solid #3B4A2C;background:transparent;color:#3B4A2C;border-radius:999px;padding:6px 14px;font-size:12.5px;font-weight:600;cursor:pointer;min-height:36px;">Teljes csomag</button>
+              <button onClick="{{ packNone }}" style="border:0;background:transparent;color:#5A6450;padding:6px 8px;font-size:12.5px;font-weight:600;cursor:pointer;text-decoration:underline;">Mind ki</button>
+            </div>
+            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:14px;">
+              <sc-for list="{{ sizeGroups }}" as="g" hint-placeholder-count="3">
+                <div style="display:flex;flex-direction:column;gap:6px;">
+                  <span style="font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;font-weight:600;color:#B85C38;">{{ g.name }}</span>
+                  <sc-for list="{{ g.items }}" as="z">
+                    <div style="display:flex;align-items:center;gap:6px;">
+                      <button onClick="{{ z.toggle }}" style="flex:1;display:flex;align-items:center;gap:10px;border:1px solid {{ z.border }};background:{{ z.bg }};border-radius:10px;padding:8px 10px;cursor:pointer;color:#3B4A2C;text-align:left;min-height:44px;">
+                        <span style="width:20px;height:20px;border-radius:6px;border:1.5px solid #3B4A2C;background:{{ z.checkBg }};color:#FAF6EE;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:600;flex:0 0 auto;">{{ z.mark }}</span>
+                        <span style="display:flex;flex-direction:column;line-height:1.2;"><span style="font-weight:600;font-size:13.5px;">{{ z.dim }}</span><span style="font-size:11.5px;color:#5A6450;">{{ z.label }}</span></span>
+                      </button>
+                      <sc-if value="{{ z.custom }}"><button onClick="{{ z.remove }}" title="Törlés" style="width:30px;height:30px;border-radius:50%;border:0;background:#F2EADB;color:#3B4A2C;cursor:pointer;">×</button></sc-if>
+                    </div>
+                  </sc-for>
+                </div>
+              </sc-for>
+            </div>
+            <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;">
+              <span style="font-weight:600;margin-right:4px;">Egyedi méret</span>
+              <input type="number" value="{{ cw }}" onChange="{{ onCw }}" placeholder="szélesség" style="width:110px;padding:9px 10px;border-radius:8px;border:1px solid rgba(59,74,44,.2);background:#FAF6EE;color:#3B4A2C;font-size:14px;min-height:42px;">
+              <span>×</span>
+              <input type="number" value="{{ ch }}" onChange="{{ onCh }}" placeholder="magasság" style="width:110px;padding:9px 10px;border-radius:8px;border:1px solid rgba(59,74,44,.2);background:#FAF6EE;color:#3B4A2C;font-size:14px;min-height:42px;">
+              <span style="color:#5A6450;">px</span>
+              <button onClick="{{ addCustom }}" style="border:1.5px solid #3B4A2C;background:transparent;color:#3B4A2C;border-radius:999px;padding:7px 14px;font-size:12.5px;font-weight:600;cursor:pointer;min-height:40px;">Hozzáadás</button>
+            </div>
+          </div>
+
+          <div style="flex:1 1 260px;min-width:0;background:#FFFFFF;border-radius:16px;border:1px solid rgba(59,74,44,.12);padding:18px;display:flex;flex-direction:column;gap:12px;">
+            <span style="font-weight:600;">Export beállítások</span>
+            <div style="display:flex;gap:6px;flex-wrap:wrap;">
+              <sc-for list="{{ fmtSeg }}" as="o"><button onClick="{{ o.pick }}" style="border:0;background:{{ o.bg }};color:{{ o.fg }};border-radius:999px;padding:7px 16px;font-size:13px;font-weight:600;cursor:pointer;min-height:38px;">{{ o.label }}</button></sc-for>
+              <span style="width:10px;"></span>
+              <sc-for list="{{ scaleSeg }}" as="o"><button onClick="{{ o.pick }}" style="border:0;background:{{ o.bg }};color:{{ o.fg }};border-radius:999px;padding:7px 16px;font-size:13px;font-weight:600;cursor:pointer;min-height:38px;">{{ o.label }}</button></sc-for>
+            </div>
+            <sc-if value="{{ isJpg }}">
+              <label style="display:flex;flex-direction:column;gap:4px;font-size:13px;">
+                <span style="display:flex;justify-content:space-between;"><span>JPG minőség</span><span style="font-family:JetBrains Mono, monospace;">{{ qualityPct }}</span></span>
+                <input type="range" min="50" max="100" value="{{ qualityVal }}" onChange="{{ onQuality }}" style="width:100%;accent-color:#3B4A2C;">
+              </label>
+            </sc-if>
+            <button onClick="{{ maskTg.toggle }}" style="display:flex;align-items:center;gap:10px;border:0;background:transparent;padding:4px 0;cursor:pointer;color:#3B4A2C;font-size:13.5px;text-align:left;min-height:40px;">
+              <span style="width:38px;height:22px;border-radius:11px;background:{{ maskTg.track }};position:relative;flex:0 0 auto;transition:background .15s;"><span style="position:absolute;top:3px;left:{{ maskTg.knob }};width:16px;height:16px;border-radius:50%;background:#FFFFFF;transition:left .15s;"></span></span>
+              <span>9:16 safe zone maszk (csak előnézet)</span>
+            </button>
+            <sc-if value="{{ doc.bulk }}">
+              <div style="display:flex;flex-direction:column;gap:6px;padding-top:6px;border-top:1px solid rgba(59,74,44,.12);">
+                <span style="font-weight:600;">Tömeges mód forrása</span>
+                <div style="display:flex;gap:6px;flex-wrap:wrap;">
+                  <sc-for list="{{ bulkSeg }}" as="o"><button onClick="{{ o.pick }}" style="border:0;background:{{ o.bg }};color:{{ o.fg }};border-radius:999px;padding:7px 14px;font-size:12.5px;font-weight:600;cursor:pointer;min-height:36px;">{{ o.label }}</button></sc-for>
+                </div>
+              </div>
+            </sc-if>
+          </div>
+        </div>
+
+        <div style="position:sticky;top:64px;z-index:10;display:flex;flex-wrap:wrap;gap:12px;align-items:center;justify-content:space-between;background:#3B4A2C;color:#FAF6EE;border-radius:14px;padding:12px 14px 12px 18px;">
+          <div style="display:flex;flex-direction:column;line-height:1.3;">
+            <span style="font-family:Fraunces, Georgia, serif;font-weight:600;font-size:17px;">{{ comboText }}</span>
+            <span style="font-size:12.5px;color:#F2EADB;">{{ includedText }}</span>
+          </div>
+          <button onClick="{{ downloadZip }}" style="border:0;background:#FAF6EE;color:#3B4A2C;border-radius:999px;padding:11px 20px;font-size:14px;font-weight:600;cursor:pointer;min-height:44px;">{{ zipLabel }}</button>
+        </div>
+
+        <sc-if value="{{ noItems }}">
+          <div style="padding:16px 18px;border-radius:12px;background:#F2EADB;font-size:13.5px;">Pipálj ki legalább egy méretet.</div>
+        </sc-if>
+        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax({{ L.cardMin }},1fr));gap:14px;align-items:start;">
+          <sc-for list="{{ gridItems }}" as="it" hint-placeholder-count="6">
+            <div style="background:#FFFFFF;border-radius:12px;border:1px solid rgba(59,74,44,.12);overflow:hidden;display:flex;flex-direction:column;">
+              <div style="position:relative;background:#F2EADB;aspect-ratio:{{ it.ar }};opacity:{{ it.op }};">
+                <sc-if value="{{ it.hasThumb }}"><img src="{{ it.thumb }}" alt="" style="position:absolute;inset:0;width:100%;height:100%;display:block;"></sc-if>
+                <sc-if value="{{ it.mask }}">
+                  <div style="position:absolute;left:0;right:0;top:0;height:13.02%;background:repeating-linear-gradient(135deg,rgba(184,92,56,.42) 0 6px,rgba(184,92,56,.22) 6px 12px);border-bottom:1px dashed #FAF6EE;display:flex;align-items:center;justify-content:center;color:#FFFFFF;font-family:JetBrains Mono, monospace;font-size:10px;">SAFE ZONE · 250 px</div>
+                  <div style="position:absolute;left:0;right:0;bottom:0;height:15.63%;background:repeating-linear-gradient(135deg,rgba(184,92,56,.42) 0 6px,rgba(184,92,56,.22) 6px 12px);border-top:1px dashed #FAF6EE;display:flex;align-items:center;justify-content:center;color:#FFFFFF;font-family:JetBrains Mono, monospace;font-size:10px;">SAFE ZONE · 300 px</div>
+                </sc-if>
+                <span title="{{ it.checkTitle }}" style="position:absolute;top:8px;left:8px;display:flex;align-items:center;gap:6px;background:rgba(255,255,255,.94);border-radius:999px;padding:3px 9px 3px 5px;font-size:11px;font-weight:600;color:#3B4A2C;">
+                  <span style="width:12px;height:12px;border-radius:50%;background:{{ it.dot }};"></span>{{ it.checkLabel }}
+                </span>
+                <sc-if value="{{ it.excluded }}">
+                  <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;"><span style="background:#3B4A2C;color:#FAF6EE;border-radius:999px;padding:4px 12px;font-size:12px;font-weight:600;">Kizárva</span></div>
+                </sc-if>
+              </div>
+              <div style="padding:10px 12px 12px;display:flex;flex-direction:column;gap:6px;">
+                <div style="display:flex;justify-content:space-between;gap:8px;align-items:baseline;">
+                  <span style="font-weight:600;font-size:13.5px;">{{ it.dim }}</span>
+                  <span style="font-size:12px;color:#5A6450;text-align:right;">{{ it.combo }}</span>
+                </div>
+                <span style="font-family:JetBrains Mono, monospace;font-size:10.5px;color:#5A6450;word-break:break-all;">{{ it.file }}</span>
+                <sc-for list="{{ it.issues }}" as="is">
+                  <span style="background:#FBEFC4;color:#5C4708;border-radius:6px;padding:4px 8px;font-size:11.5px;">{{ is.t }}</span>
+                </sc-for>
+                <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:2px;">
+                  <button onClick="{{ it.download }}" style="border:0;background:#3B4A2C;color:#FAF6EE;border-radius:999px;padding:6px 12px;font-size:12px;font-weight:600;cursor:pointer;min-height:34px;">Letöltés</button>
+                  <button onClick="{{ it.edit }}" style="border:1.5px solid #3B4A2C;background:transparent;color:#3B4A2C;border-radius:999px;padding:5px 12px;font-size:12px;font-weight:600;cursor:pointer;min-height:34px;">{{ it.editLabel }}</button>
+                  <button onClick="{{ it.toggleEx }}" style="border:0;background:transparent;color:#5A6450;padding:5px 6px;font-size:12px;font-weight:600;cursor:pointer;text-decoration:underline;">{{ it.exLabel }}</button>
+                </div>
+              </div>
+            </div>
+          </sc-for>
+        </div>
+      </section>
+    </sc-if>
+
+    <div style="display:flex;gap:10px;justify-content:space-between;flex-wrap:wrap;padding-top:6px;">
+      <button onClick="{{ prevStep }}" style="border:1.5px solid #3B4A2C;background:transparent;color:#3B4A2C;border-radius:999px;padding:10px 20px;font-size:14px;font-weight:600;cursor:pointer;min-height:44px;visibility:{{ prevVis }};">← Vissza</button>
+      <button onClick="{{ nextStep }}" style="border:0;background:#3B4A2C;color:#FAF6EE;border-radius:999px;padding:11px 22px;font-size:14px;font-weight:600;cursor:pointer;min-height:44px;visibility:{{ nextVis }};" style-hover="background:#2E3A22;">{{ nextLabel }}</button>
+    </div>
+  </main>
+
+  <sc-if value="{{ showAside }}">
+    <aside style="flex:0 0 auto;width:{{ L.asideW }};padding:20px;border-left:{{ L.asideBorder }};background:#F2EADB;display:flex;flex-direction:column;gap:12px;position:{{ L.asidePos }};top:60px;align-self:flex-start;max-height:{{ L.asideMaxH }};overflow:auto;">
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;">
+        <span style="font-family:Fraunces, Georgia, serif;font-weight:600;font-size:18px;white-space:nowrap;">Élő előnézet</span>
+        <span style="font-size:12px;color:#5A6450;text-align:right;min-width:0;overflow-wrap:anywhere;">{{ pv.combo }}</span>
+      </div>
+      <div style="display:flex;flex-wrap:wrap;gap:6px;">
+        <sc-for list="{{ pvSizes }}" as="z">
+          <button onClick="{{ z.pick }}" style="border:0;background:{{ z.bg }};color:{{ z.fg }};border-radius:999px;padding:5px 11px;font-size:12px;font-weight:600;cursor:pointer;min-height:30px;">{{ z.label }}</button>
+        </sc-for>
+      </div>
+      <div style="position:relative;width:{{ pv.wcss }};aspect-ratio:{{ pv.ar }};margin:0 auto;flex:0 0 auto;background:#FFFFFF;border-radius:6px;overflow:hidden;box-shadow:0 10px 30px rgba(59,74,44,.18);">
+        <sc-if value="{{ pv.has }}"><img src="{{ pv.url }}" alt="Előnézet" style="position:absolute;inset:0;width:100%;height:100%;display:block;"></sc-if>
+        <sc-if value="{{ pv.mask }}">
+          <div style="position:absolute;left:0;right:0;top:0;height:13.02%;background:repeating-linear-gradient(135deg,rgba(184,92,56,.42) 0 6px,rgba(184,92,56,.22) 6px 12px);border-bottom:1px dashed #FAF6EE;display:flex;align-items:center;justify-content:center;color:#FFFFFF;font-family:JetBrains Mono, monospace;font-size:10px;">SAFE ZONE</div>
+          <div style="position:absolute;left:0;right:0;bottom:0;height:15.63%;background:repeating-linear-gradient(135deg,rgba(184,92,56,.42) 0 6px,rgba(184,92,56,.22) 6px 12px);border-top:1px dashed #FAF6EE;display:flex;align-items:center;justify-content:center;color:#FFFFFF;font-family:JetBrains Mono, monospace;font-size:10px;">SAFE ZONE</div>
+        </sc-if>
+        <sc-if value="{{ pv.grid }}">
+          <div style="position:absolute;top:0;bottom:0;left:33.333%;border-left:1px dashed rgba(255,255,255,.9);"></div>
+          <div style="position:absolute;top:0;bottom:0;left:66.666%;border-left:1px dashed rgba(255,255,255,.9);"></div>
+          <div style="position:absolute;left:0;right:0;top:33.333%;border-top:1px dashed rgba(255,255,255,.9);"></div>
+          <div style="position:absolute;left:0;right:0;top:66.666%;border-top:1px dashed rgba(255,255,255,.9);"></div>
+        </sc-if>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:6px;background:#FFFFFF;border-radius:12px;padding:12px;">
+        <span style="font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;font-weight:600;">Márkaellenőrzés</span>
+        <sc-for list="{{ pv.checks }}" as="c" hint-placeholder-count="4">
+          <div style="display:flex;gap:8px;align-items:flex-start;font-size:12.5px;">
+            <span style="width:10px;height:10px;border-radius:50%;background:{{ c.dot }};margin-top:4px;flex:0 0 auto;"></span>
+            <span><span style="font-weight:600;">{{ c.k }}</span> · {{ c.note }}</span>
+          </div>
+        </sc-for>
+      </div>
+      <button onClick="{{ maskTg.toggle }}" style="display:flex;align-items:center;gap:10px;border:0;background:transparent;padding:2px 0;cursor:pointer;color:#3B4A2C;font-size:13px;text-align:left;min-height:36px;">
+        <span style="width:34px;height:20px;border-radius:10px;background:{{ maskTg.track }};position:relative;flex:0 0 auto;"><span style="position:absolute;top:3px;left:{{ maskTg.knobS }};width:14px;height:14px;border-radius:50%;background:#FFFFFF;"></span></span>
+        <span>Safe zone maszk 9:16-on</span>
+      </button>
+    </aside>
+  </sc-if>
+</div>
+
+<sc-if value="{{ editOpen }}">
+  <div onClick="{{ closeEdit }}" style="position:fixed;inset:0;background:rgba(36,45,26,.5);z-index:50;display:flex;align-items:center;justify-content:center;padding:16px;">
+    <div onClick="{{ stop }}" style="background:#FAF6EE;border-radius:18px;max-width:980px;width:100%;max-height:92vh;overflow:auto;display:flex;flex-wrap:wrap;gap:20px;padding:20px;">
+      <div style="flex:1 1 300px;display:flex;align-items:center;justify-content:center;background:#F2EADB;border-radius:12px;padding:14px;min-height:300px;">
+        <sc-if value="{{ ed.has }}"><img src="{{ ed.url }}" alt="" style="max-width:100%;max-height:70vh;display:block;box-shadow:0 10px 30px rgba(59,74,44,.2);"></sc-if>
+      </div>
+      <div style="flex:1 1 280px;display:flex;flex-direction:column;gap:14px;min-width:0;">
+        <div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start;">
+          <div style="display:flex;flex-direction:column;">
+            <span style="font-family:Fraunces, Georgia, serif;font-weight:600;font-size:20px;">Finomítás</span>
+            <span style="font-family:JetBrains Mono, monospace;font-size:10.5px;color:#5A6450;word-break:break-all;">{{ ed.file }}</span>
+          </div>
+          <button onClick="{{ closeEdit }}" style="width:36px;height:36px;border-radius:50%;border:0;background:#F2EADB;color:#3B4A2C;font-size:18px;cursor:pointer;flex:0 0 auto;">×</button>
+        </div>
+        <label style="display:flex;flex-direction:column;gap:6px;">
+          <span style="font-weight:600;">Saját címsor ehhez a bannerhez</span>
+          <textarea value="{{ ed.headline }}" onChange="{{ ed.onHeadline }}" maxLength="60" rows="2" placeholder="{{ doc.headline }}" style="padding:10px 12px;border-radius:10px;border:1px solid rgba(59,74,44,.2);background:#FFFFFF;color:#3B4A2C;font-family:Fraunces, Georgia, serif;font-weight:600;font-size:16px;resize:vertical;"></textarea>
+        </label>
+        <sc-for list="{{ ed.warn }}" as="w"><span style="background:#FBEFC4;color:#5C4708;border-radius:8px;padding:6px 10px;font-size:12.5px;">{{ w.t }}</span></sc-for>
+        <sc-if value="{{ ed.isHero }}">
+          <div style="display:flex;flex-direction:column;gap:6px;">
+            <span style="font-weight:600;">Panelszín</span>
+            <div style="display:flex;gap:6px;flex-wrap:wrap;">
+              <sc-for list="{{ ed.panels }}" as="o"><button onClick="{{ o.pick }}" style="display:flex;align-items:center;gap:6px;border:2px solid {{ o.border }};background:#FFFFFF;border-radius:999px;padding:4px 12px 4px 5px;font-size:12.5px;font-weight:600;cursor:pointer;color:#3B4A2C;"><span style="width:22px;height:22px;border-radius:50%;background:{{ o.sw }};border:1px solid rgba(59,74,44,.25);"></span>{{ o.label }}</button></sc-for>
+            </div>
+          </div>
+        </sc-if>
+        <div style="display:flex;flex-direction:column;gap:6px;">
+          <span style="font-weight:600;">Logó</span>
+          <div style="display:flex;gap:6px;flex-wrap:wrap;">
+            <sc-for list="{{ ed.logos }}" as="o"><button onClick="{{ o.pick }}" style="display:flex;align-items:center;gap:6px;border:2px solid {{ o.border }};background:#FFFFFF;border-radius:999px;padding:4px 12px 4px 5px;font-size:12.5px;font-weight:600;cursor:pointer;color:#3B4A2C;"><span style="width:22px;height:22px;border-radius:50%;background:{{ o.sw }};border:1px solid rgba(59,74,44,.25);"></span>{{ o.label }}</button></sc-for>
+          </div>
+        </div>
+        <button onClick="{{ ed.scrim.toggle }}" style="display:flex;align-items:center;gap:10px;border:0;background:transparent;padding:2px 0;cursor:pointer;color:#3B4A2C;font-size:13.5px;text-align:left;min-height:40px;">
+          <span style="width:38px;height:22px;border-radius:11px;background:{{ ed.scrim.track }};position:relative;flex:0 0 auto;"><span style="position:absolute;top:3px;left:{{ ed.scrim.knob }};width:16px;height:16px;border-radius:50%;background:#FFFFFF;"></span></span>
+          <span>Sötétítés a logó mögött</span>
+        </button>
+        <div style="display:flex;flex-direction:column;gap:6px;background:#FFFFFF;border-radius:12px;padding:12px;">
+          <sc-for list="{{ ed.checks }}" as="c">
+            <div style="display:flex;gap:8px;align-items:flex-start;font-size:12.5px;"><span style="width:10px;height:10px;border-radius:50%;background:{{ c.dot }};margin-top:4px;flex:0 0 auto;"></span><span><span style="font-weight:600;">{{ c.k }}</span> · {{ c.note }}</span></div>
+          </sc-for>
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:auto;">
+          <button onClick="{{ ed.download }}" style="border:0;background:#3B4A2C;color:#FAF6EE;border-radius:999px;padding:10px 18px;font-size:13px;font-weight:600;cursor:pointer;min-height:44px;">Letöltés</button>
+          <button onClick="{{ ed.reset }}" style="border:1.5px solid #3B4A2C;background:transparent;color:#3B4A2C;border-radius:999px;padding:9px 16px;font-size:13px;font-weight:600;cursor:pointer;min-height:44px;">Visszaállítás</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</sc-if>
+
+<sc-if value="{{ projOpen }}">
+  <div onClick="{{ closeProjects }}" style="position:fixed;inset:0;background:rgba(36,45,26,.5);z-index:50;display:flex;align-items:center;justify-content:center;padding:16px;">
+    <div onClick="{{ stop }}" style="background:#FAF6EE;border-radius:18px;max-width:560px;width:100%;max-height:86vh;overflow:auto;padding:22px;display:flex;flex-direction:column;gap:14px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;">
+        <span style="font-family:Fraunces, Georgia, serif;font-weight:600;font-size:22px;">Projektek</span>
+        <button onClick="{{ closeProjects }}" style="width:36px;height:36px;border-radius:50%;border:0;background:#F2EADB;color:#3B4A2C;font-size:18px;cursor:pointer;">×</button>
+      </div>
+      <span style="font-size:13px;color:#5A6450;">A projekt a képtárat, a párosításokat, a szövegeket és a beállításokat is tartalmazza. Ebben a böngészőben tárolódik; fájlba exportálva másik gépen is betölthető.</span>
+      <sc-if value="{{ noProjects }}"><div style="padding:14px;border-radius:10px;background:#F2EADB;font-size:13px;">Még nincs mentett projekt.</div></sc-if>
+      <sc-for list="{{ projects }}" as="pr">
+        <div style="display:flex;align-items:center;gap:10px;background:#FFFFFF;border-radius:12px;padding:10px 12px;border:1px solid rgba(59,74,44,.12);">
+          <div style="flex:1;min-width:0;display:flex;flex-direction:column;">
+            <span style="font-weight:600;">{{ pr.name }}</span>
+            <span style="font-size:12px;color:#5A6450;">{{ pr.meta }}</span>
+          </div>
+          <button onClick="{{ pr.load }}" style="border:0;background:#3B4A2C;color:#FAF6EE;border-radius:999px;padding:7px 14px;font-size:12.5px;font-weight:600;cursor:pointer;min-height:36px;">Betöltés</button>
+          <button onClick="{{ pr.del }}" style="border:0;background:transparent;color:#5A6450;font-size:12.5px;font-weight:600;cursor:pointer;text-decoration:underline;">Törlés</button>
+        </div>
+      </sc-for>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;padding-top:6px;border-top:1px solid rgba(59,74,44,.12);">
+        <button onClick="{{ newProject }}" style="border:1.5px solid #3B4A2C;background:transparent;color:#3B4A2C;border-radius:999px;padding:8px 14px;font-size:12.5px;font-weight:600;cursor:pointer;min-height:38px;">Új projekt</button>
+        <button onClick="{{ exportJson }}" style="border:1.5px solid #3B4A2C;background:transparent;color:#3B4A2C;border-radius:999px;padding:8px 14px;font-size:12.5px;font-weight:600;cursor:pointer;min-height:38px;">Exportálás fájlba</button>
+        <button onClick="{{ pickJson }}" style="border:1.5px solid #3B4A2C;background:transparent;color:#3B4A2C;border-radius:999px;padding:8px 14px;font-size:12.5px;font-weight:600;cursor:pointer;min-height:38px;">Betöltés fájlból</button>
+        <input type="file" accept="application/json,.json" ref="{{ jsonRef }}" onChange="{{ onJsonFile }}" style="display:none;">
+      </div>
+    </div>
+  </div>
+</sc-if>
+
+<sc-if value="{{ locked }}" hint-placeholder-val="{{ true }}">
+  <div style="position:fixed;inset:0;z-index:200;background:#FAF6EE;display:flex;align-items:center;justify-content:center;padding:20px;">
+    <form onSubmit="{{ tryUnlock }}" style="width:100%;max-width:380px;background:#FFFFFF;border-radius:20px;border:1px solid rgba(59,74,44,.12);padding:32px 28px;display:flex;flex-direction:column;gap:16px;align-items:stretch;box-shadow:0 20px 50px rgba(59,74,44,.12);">
+      <img src="assets/logo-red.png" alt="FitActive" style="height:64px;width:auto;align-self:center;display:block;">
+      <div style="display:flex;flex-direction:column;gap:4px;text-align:center;">
+        <span style="font-family:Fraunces, Georgia, serif;font-weight:600;font-size:22px;">Bannerkészítő</span>
+        <span style="font-size:13px;color:#5A6450;">Add meg a jelszót a belépéshez.</span>
+      </div>
+      <input type="password" value="{{ pw }}" onChange="{{ onPw }}" autoFocus="" placeholder="Jelszó" aria-label="Jelszó" style="padding:12px 14px;border-radius:10px;border:1px solid {{ pwBorder }};background:#FAF6EE;color:#3B4A2C;font-size:15px;min-height:46px;outline:none;">
+      <sc-if value="{{ pwErr }}"><span style="font-size:12.5px;color:#8E4426;text-align:center;">Hibás jelszó. Próbáld újra.</span></sc-if>
+      <button type="submit" style="border:0;background:#3B4A2C;color:#FAF6EE;border-radius:999px;padding:12px 20px;font-size:14px;font-weight:600;cursor:pointer;min-height:46px;" style-hover="background:#2E3A22;">Belépés</button>
+    </form>
+  </div>
+</sc-if>
+
+<sc-if value="{{ hasToast }}">
+  <div style="position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:#3B4A2C;color:#FAF6EE;border-radius:999px;padding:10px 18px;font-size:13.5px;font-weight:600;z-index:60;box-shadow:0 8px 24px rgba(36,45,26,.3);max-width:90vw;text-align:center;">{{ toast }}</div>
+</sc-if>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;showLogoGrid&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:false,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Előnézet&quot;},&quot;previewMax&quot;:{&quot;editor&quot;:&quot;range&quot;,&quot;default&quot;:900,&quot;min&quot;:500,&quot;max&quot;:1400,&quot;step&quot;:50,&quot;unit&quot;:&quot;px&quot;,&quot;tsType&quot;:&quot;number&quot;,&quot;section&quot;:&quot;Előnézet&quot;},&quot;iconClaims&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Bannerek&quot;}}">
+const PW_HASH='826cc9e885f9fc92ab7d6698325bfacde805aa9a239218fdf2b3e5f4a5214b06';
+const C={red:'#E30613',olive:'#3B4A2C',terra:'#B85C38',beige:'#F2EADB',light:'#FAF6EE',white:'#FFFFFF'};
+const PRODUCTS=[
+ {id:'puppy',slug:'puppy-barany',age:'Puppy & Junior',short:'Puppy & Junior Bárány',recipe:'Lamb & Rice with Apple',protein:28,fat:12,dog:'Kifli',breed:'biewer yorkshire kölyök',img:'assets/p-puppy.png',fam:'PUPPY & JUNIOR'},
+ {id:'adult-barany',slug:'adult-barany',age:'Adult',short:'Adult Bárány',recipe:'Lamb & Rice with Apple',protein:25,fat:14,dog:'Bogyó',breed:'tricolor ausztrál juhász',img:'assets/p-adult-barany.png',fam:'ADULT · BÁRÁNY'},
+ {id:'adult-marha',slug:'adult-marha',age:'Adult',short:'Adult Marha',recipe:'Beef & Carrots with Apple',protein:25,fat:14,dog:'Pacni',breed:'red merle border collie',img:'assets/p-adult-marha.png',fam:'ADULT · MARHA'},
+ {id:'light-nyul',slug:'light-nyul',age:'Adult Light',short:'Adult Light Nyúl',recipe:'Rabbit & Apple with Rice',protein:22,fat:9,dog:'Mogyoró',breed:'vörös törpeuszkár',img:'assets/p-light-nyul.png',fam:'ADULT LIGHT · NYÚL'},
+ {id:'senior',slug:'senior-barany',age:'Senior / Light',short:'Senior Bárány',recipe:'Lamb & Rice with Apple',protein:22,fat:10,dog:'Fülöp',breed:'drótszőrű foxterrier',img:'assets/p-senior.png',fam:'SENIOR LIGHT'}];
+const PROD=Object.fromEntries(PRODUCTS.map(p=>[p.id,p]));
+const PRESETS=[
+ {id:'1080x1080',w:1080,h:1080,group:'Social',label:'1:1 · négyzet'},
+ {id:'1080x1350',w:1080,h:1350,group:'Social',label:'4:5 · feed'},
+ {id:'1080x1920',w:1080,h:1920,group:'Social',label:'9:16 · story / reels'},
+ {id:'1920x1080',w:1920,h:1080,group:'Fekvő',label:'16:9'},
+ {id:'1200x628',w:1200,h:628,group:'Fekvő',label:'Meta link / GDN'},
+ {id:'600x900',w:600,h:900,group:'Hírlevél',label:'Hírlevél'}];
+const META_PACK=['1080x1080','1080x1350','1080x1920','1200x628'];
+const TPLS=[
+ {id:'hero',slug:'hero',letter:'A',name:'Hero',d:'Fotó + színes panel, a zsák a határon'},
+ {id:'price',slug:'ar-kartya',letter:'B',name:'Ár-kártya',d:'A termék a hős, 4 és 12 kg ár'},
+ {id:'family',slug:'termekcsalad',letter:'C',name:'Termékcsalád',d:'Mind az öt zsák egy sorban'},
+ {id:'claim',slug:'claim',letter:'D',name:'Claim',d:'Fotó + egyetlen nagy mondat'}];
+const HEADLINES=['Hagyd ki a búzát. Ne a kalandot.','Érzékeny a kutyád? Neki készült.','Észreveszed. És jól döntesz.','Búza nélkül. Kaland nélkül nem.','Ugyanaz a FitActive, kíméletesebb recept.','Kölyöktől idős korig, búza nélkül.','3 íz, 3 életkor. Mind búzamentes.','Jó gazdi vagy.'];
+const CLAIMS=[{l:'Búzamentes',i:'buza'},{l:'Csirkementes',i:'szarnyas'},{l:'Szárnyasmentes',i:'szarnyas'},{l:'Ízületvédelem',i:'izulet'},{l:'Bőr- és szőrápolás',i:'szor'}];
+const CLAIM_ICON=Object.fromEntries(CLAIMS.map(c=>[c.l,c.i]));
+const LEGAL='Hozzáadott búza, csirke és szárnyas nélküli receptúra.';
+const PANELS={olive:{bg:C.olive,fg:C.light,accent:C.beige,line:C.light,muted:C.beige,ico:'cream'},beige:{bg:C.beige,fg:C.olive,accent:C.terra,line:C.olive,muted:C.olive,ico:'olive'},terra:{bg:C.terra,fg:C.white,accent:C.light,line:C.white,muted:C.white,ico:'cream'}};
+const POOL={
+ puppy:['Az első zsák is lehet jó döntés.','Kis mancsok, búza nélkül.','Ami a földön van, az övé. A tál is.','Első kutya? Jó kezekben van.','Kölyökkortól kíméletesen.'],
+ 'adult-barany':['Még egy kör? Búza nélkül is bírja.','Hagyd ki a búzát. Ne a futást.','Bárány, rizs, alma. Ennyi kell.','Mi is gazdik vagyunk. Értjük.','Futás után is jól érzi magát.'],
+ 'adult-marha':['Marha, sárgarépa, alma. Ennyi kell.','Mindenki megvan? Akkor mehetünk.','Észrevetted, hogy vakarózik? Mi is.','Csendes pásztor, kíméletes recept.'],
+ 'light-nyul':['Könnyebb recept, ugyanaz a kaland.','Grammra kimérve, búza nélkül.','Előbb a frizura, aztán a tál.','Kéreget? Te tudod, mit adsz neki.'],
+ senior:['Öreg? Ő? Hol a macska?','Más adag, ugyanaz a lendület.','Ugyanaz a séta, kíméletesebb recept.','Idősebb korban is búza nélkül.'],
+ all:['Öt recept, egy ígéret: búza nélkül.','Jó kezekben van a kutyád.','Mind búzamentes. Mind FitActive.','Kölyöktől idős korig, kíméletesen.','Boldog, egészséges kutyákért.']};
+const DEFAULT_DOC={projectName:'Wheat-Free bevezetés 2026',images:[],activeImg:null,products:['adult-barany'],activeProd:'adult-barany',pairs:[],template:'hero',panel:'olive',headline:'Hagyd ki a búzát. Ne a kalandot.',closing:'Jó gazdi vagy.',url:'fitactive.hu',claims:['Búzamentes','Csirkementes'],legal:false,price4:'6 990',price12:'15 990',newTag:true,priceHeadline:true,sizes:['1080x1080','1080x1350','1080x1920'],customSizes:[],logoMode:'auto',scrim:false,bulk:false,bulkSource:'all',excluded:{},overrides:{},format:'png',quality:0.9,scale:1};
+
+const LIN=Array.from({length:256},(_,i)=>{const c=i/255;return c<=0.03928?c/12.92:Math.pow((c+0.055)/1.055,2.4);});
+const hexL=h=>{const n=parseInt(h.slice(1),16);return 0.2126*LIN[n>>16]+0.7152*LIN[(n>>8)&255]+0.0722*LIN[n&255];};
+const LOGO_L={red:hexL(C.red),cream:hexL(C.light),olive:hexL(C.olive)};
+const ratio=(a,b)=>(Math.max(a,b)+0.05)/(Math.min(a,b)+0.05);
+const dispName=im=>{if(!im)return '';if(im.label)return im.label;const b=im.name.replace(/\.[^.]+$/,'');return b.length>18?b.slice(0,17)+'…':b;};
+const slug=s=>(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'')||'x';
+const BRAND_RE=/\bfit[\s\-_.]*active\b(?!\.hu)/gi;
+function fixBrand(t){let changed=false;const out=String(t||'').replace(BRAND_RE,m=>{if(m!=='FitActive')changed=true;return 'FitActive';});return {out,changed};}
+function toneWarn(t){const w=[];const s=String(t||'').toLowerCase();
+ if(/glut[eé]nmentes/.test(s))w.push('„gluténmentes”: a táp NEM gluténmentes, ez a szó nem használható.');
+ if(/legjobb/.test(s))w.push('„legjobb”: kerüld a szuperlatívuszt.');
+ else if(/(^|[^a-záéíóöőúüű])leg[a-záéíóöőúüű]{2,}(bb)([^a-záéíóöőúüű]|$)/.test(s))w.push('Szuperlatívusz: a hangnem legyen visszafogott.');
+ if(/100\s*%/.test(s))w.push('„100%”: túlzó ígéret, kerüld.');
+ if(/(veszély|betegség|mérgez|félj|rettegj)/.test(s))w.push('Félelemkeltő szóhasználat: a hangnem gondoskodó.');
+ const m=String(t||'').match(BRAND_RE);if(m&&m.some(x=>x!=='FitActive'))w.push('A márkanév helyesen: FitActive.');
+ return w;}
+
+function glue(x,raw,maxW){const out=[];let buf='';for(let i=0;i<raw.length;i++){const w=raw[i];buf=buf?buf+' '+w:w;const short=w.replace(/[^\p{L}\d]/gu,'').length<=3&&!/[.!?,;:]$/.test(w);if(short&&i<raw.length-1&&x.measureText(buf+' '+raw[i+1]).width<=maxW)continue;out.push(buf);buf='';}if(buf)out.push(buf);return out;}
+function wrap(x,text,maxW){const out=[];for(const para of String(text||'').split('\n')){const words=glue(x,para.split(/\s+/).filter(Boolean),maxW);let line='';for(const w of words){const t=line?line+' '+w:w;if(!line||x.measureText(t).width<=maxW)line=t;else{out.push(line);line=w;}}if(line)out.push(line);}return out;}
+function fit(x,text,o){const lh=o.lh||1.12;const F=s=>`${o.wt} ${s}px ${o.fam}`;
+ const test=s=>{x.font=F(s);const lines=wrap(x,text,o.maxW);const h=lines.length*s*lh;const ok=h<=o.maxH+0.5&&lines.every(l=>x.measureText(l).width<=o.maxW+0.5);return {size:s,lines,h,ok};};
+ let best=null;const t=test(o.max);if(t.ok)best=t;else{let lo=o.min,hi=o.max;for(let i=0;i<14;i++){const mid=(lo+hi)/2;const r=test(mid);if(r.ok){best=r;lo=mid;}else hi=mid;}}
+ if(!best){best=test(o.min);best.over=true;}
+ return Object.assign(best,{lh,F});}
+function drawText(R,f,x0,y0,color,align,w){const x=R.x;align=align||'left';x.font=f.F(f.size);x.fillStyle=color;x.textAlign=align;x.textBaseline='top';const ax=align==='center'?x0+w/2:x0;let mw=0;
+ f.lines.forEach((l,i)=>{x.fillText(l,ax,y0+i*f.size*f.lh+(f.lh-1)*f.size*0.5);mw=Math.max(mw,x.measureText(l).width);});x.textAlign='left';
+ if(f.lines.length)R.boxes.push([align==='center'?x0+(w-mw)/2:x0,y0,mw,f.h]);}
+function drawPhoto(R,px,py,pw,ph){const {x,spec,els}=R;const el=spec.img&&els[spec.img.id];
+ if(el&&el.naturalWidth){const iw=el.naturalWidth,ih=el.naturalHeight;const sc=Math.max(pw/iw,ph/ih);const sw=pw/sc,sh=ph/sc;x.drawImage(el,(iw-sw)*spec.img.fx,(ih-sh)*spec.img.fy,sw,sh,px,py,pw,ph);return;}
+ x.fillStyle='#D9CFBC';x.fillRect(px,py,pw,ph);x.save();x.beginPath();x.rect(px,py,pw,ph);x.clip();x.strokeStyle='rgba(59,74,44,0.09)';const mn=Math.min(pw,ph);x.lineWidth=Math.max(2,mn*0.012);const st=mn*0.06;for(let k=-ph;k<pw;k+=st){x.beginPath();x.moveTo(px+k,py+ph);x.lineTo(px+k+ph,py);x.stroke();}x.restore();
+ x.fillStyle='#3B4A2C';x.font=`400 ${Math.max(10,mn*0.034)}px "JetBrains Mono", monospace`;x.textAlign='center';x.textBaseline='middle';x.fillText('FOTÓ HELYE',px+pw/2,py+ph/2);x.textAlign='left';}
+function measure(R,x0,y0,w,h){const s=R.s;const X=Math.max(0,Math.round(x0*s)),Y=Math.max(0,Math.round(y0*s));const Wd=Math.max(1,Math.min(R.x.canvas.width-X,Math.round(w*s))),Hd=Math.max(1,Math.min(R.x.canvas.height-Y,Math.round(h*s)));
+ let d;try{d=R.x.getImageData(X,Y,Wd,Hd).data;}catch(e){return 0.5;}let L=0,n=0;const step=Math.max(1,Math.floor(d.length/4/5000))*4;for(let i=0;i<d.length;i+=step){L+=0.2126*LIN[d[i]]+0.7152*LIN[d[i+1]]+0.0722*LIN[d[i+2]];n++;}return n?L/n:0.5;}
+function scrim(R,x0,y0,w,h){const x=R.x;const cx=x0+w/2,cy=y0+h/2;x.save();x.translate(cx,cy);x.scale(1,(h*2.0)/(w*1.3));const r=w*0.95;const g=x.createRadialGradient(0,0,0,0,0,r);g.addColorStop(0,'rgba(28,34,20,0.58)');g.addColorStop(0.55,'rgba(28,34,20,0.34)');g.addColorStop(1,'rgba(28,34,20,0)');x.fillStyle=g;x.fillRect(-r,-r,r*2,r*2);x.restore();}
+function lumStd(R,x0,y0,w,h){const s=R.s;const X=Math.max(0,Math.round(x0*s)),Y=Math.max(0,Math.round(y0*s));const Wd=Math.max(1,Math.min(R.x.canvas.width-X,Math.round(w*s))),Hd=Math.max(1,Math.min(R.x.canvas.height-Y,Math.round(h*s)));
+ let d;try{d=R.x.getImageData(X,Y,Wd,Hd).data;}catch(e){return 0;}let a=0,b=0,n=0;const step=Math.max(1,Math.floor(d.length/4/4000))*4;for(let i=0;i<d.length;i+=step){const l=(0.2126*d[i]+0.7152*d[i+1]+0.0722*d[i+2])/255;a+=l;b+=l*l;n++;}const mu=a/n;return Math.sqrt(Math.max(0,b/n-mu*mu));}
+const LOGO_OK={beige:['red'],olive:['cream'],terra:['cream'],photo:['red','cream']};
+const LOGO_NAME={red:'Elsődleges (piros)',cream:'Inverz (krém)',olive:'Monokróm (olíva)'};
+function placeLogo(R,x0,y0,bg){const {x,spec,A}=R;const w=R.lw,h=R.lh;let L,sugg,hetero=0;
+ if(bg==='photo'){if(spec.scrim)scrim(R,x0,y0,w,h);L=measure(R,x0,y0,w,h);hetero=lumStd(R,x0,y0,w,h);sugg=ratio(LOGO_L.red,L)>=ratio(LOGO_L.cream,L)?'red':'cream';}
+ else{L=hexL(PANELS[bg].bg);sugg=LOGO_OK[bg][0];}
+ const v=spec.logoMode==='auto'||!LOGO_OK[bg].includes(spec.logoMode)?sugg:spec.logoMode;const cr=ratio(LOGO_L[v],L);const forced=spec.logoMode!=='auto'&&v!==spec.logoMode;
+ x.drawImage(A.logo[v],x0,y0,w,h);R.logoBox=[x0,y0,w,h];
+ R.logo={v,sugg,L,cr,weak:cr<3,bg,approved:LOGO_OK[bg].includes(v),forced,asked:spec.logoMode,hetero,bright:Math.round(Math.pow(L,1/2.2)*100)};}
+function stamp(R,x0,y0){const a=R.A.stamp.naturalWidth/R.A.stamp.naturalHeight||1;const w=a>=1?R.sd:R.sd*a,h=a>=1?R.sd/a:R.sd;R.x.drawImage(R.A.stamp,x0+(R.sd-w)/2,y0+(R.sd-h)/2,w,h);R.boxes.push([x0,y0,R.sd,R.sd]);}
+function bag(R,el,bx,by,bw,bh){const x=R.x,s=R.s;const pa=el.naturalWidth/el.naturalHeight;let w=bw,h=bw/pa;if(h>bh){h=bh;w=bh*pa;}const X=bx+(bw-w)/2,Y=by+bh-h;
+ x.save();x.filter=`blur(${Math.max(1,h*0.022*s)}px)`;x.fillStyle='rgba(30,36,22,0.34)';x.beginPath();x.ellipse(X+w*0.53,Y+h*0.985,w*0.46,h*0.028,0,0,Math.PI*2);x.fill();x.restore();
+ x.save();x.shadowColor='rgba(30,36,22,0.26)';x.shadowBlur=h*0.05*s;x.shadowOffsetY=h*0.012*s;x.drawImage(el,X,Y,w,h);x.restore();return [X,Y,w,h];}
+function chipsLayout(x,labels,maxW,size,icons){x.font=`600 ${size}px Inter`;const padX=size*0.8,h=size*2.1,gap=size*0.5,ic=icons?h*0.82:0;const rows=[[]];let rw=0;
+ labels.forEach(l=>{const w=x.measureText(l).width+padX*2+(ic?ic*0.85:0);if(rows[rows.length-1].length&&rw+gap+w>maxW){rows.push([]);rw=0;}const r=rows[rows.length-1];rw+=(r.length?gap:0)+w;r.push({l,w});});
+ return {rows,h,gap,padX,ic,total:labels.length?rows.length*h+(rows.length-1)*gap:0};}
+function chips(R,labels,x0,y0,maxW,size,o){const x=R.x;const icons=o.icons?R.icons[o.icons]:null;const L=chipsLayout(x,labels,maxW,size,!!icons);
+ L.rows.forEach((row,i)=>{const rw=row.reduce((a,c)=>a+c.w,0)+L.gap*(row.length-1);let cx=o.align==='center'?x0+(maxW-rw)/2:x0;const cy=y0+i*(L.h+L.gap);
+  row.forEach(c=>{x.beginPath();x.roundRect(cx,cy,c.w,L.h,L.h/2);if(o.fill){x.fillStyle=o.fill;x.fill();}else{x.lineWidth=Math.max(1,size*0.09);x.strokeStyle=o.fg;x.stroke();}
+   let tx=cx+L.padX;if(icons){const im=icons[CLAIM_ICON[c.l]];const isz=L.ic;if(im)x.drawImage(im,cx+(L.h-isz)/2,cy+(L.h-isz)/2,isz,isz);tx=cx+(L.h-isz)/2+isz+size*0.45;}
+   x.font=`600 ${size}px Inter`;x.textBaseline='middle';x.fillStyle=o.text||o.fg;x.fillText(c.l,tx,cy+L.h/2+size*0.04);R.boxes.push([cx,cy,c.w,L.h]);cx+=c.w+L.gap;});});
+ x.textBaseline='top';return L.total;}
+
+function textColumn(R,P,x0,y0,w,h,o){const {x,W,H,spec}=R;const base=Math.min(W,H);const bottom=y0+h;
+ const cs=Math.max(10,base*0.024),ls=Math.max(9,base*0.018);const ic=spec.iconClaims?P.ico:null;
+ const calc=bw=>{let hh=0,lf=null,ch=0;if(spec.claims.length){ch=chipsLayout(x,spec.claims,bw,cs,!!ic).total;hh+=ch;}if(spec.legal){lf=fit(x,LEGAL,{fam:'Inter',wt:400,maxW:bw,maxH:ls*1.3*2,max:ls,min:Math.max(8,ls*0.7),lh:1.3});hh+=lf.h+(ch?cs*0.8:0);}return {hh,lf,ch,bw};};
+ let c=calc(o.fullW||w);if(o.fullW&&bottom-c.hh<o.fullFrom)c=calc(w);
+ const by=bottom-c.hh;
+ if(c.ch)chips(R,spec.claims,x0,by,c.bw,cs,{fg:P.line,icons:ic});
+ if(c.lf)drawText(R,c.lf,x0,bottom-c.lf.h,P.muted);
+ const gap=base*0.035;const blockBottom=c.hh?by-gap:bottom;
+ const cls=Math.max(12,base*0.042);let cf=null,uf=null,clH=0;
+ if(spec.closing){cf=fit(x,spec.closing,{fam:'Fraunces',wt:600,maxW:w,maxH:cls*1.15*2,max:cls,min:cls*0.6,lh:1.15});clH+=cf.h;}
+ if(spec.url){uf=fit(x,spec.url,{fam:'Inter',wt:600,maxW:w,maxH:cls,max:cls*0.6,min:cls*0.4,lh:1.2});clH+=uf.h+cls*0.25;}
+ const hf=fit(x,spec.headline,{fam:'Fraunces',wt:600,maxW:w,maxH:Math.max(10,blockBottom-y0-clH-gap),max:base*0.088,min:base*0.03,lh:1.06});
+ if(hf.over)R.fitIssues.push(1);
+ drawText(R,hf,x0,y0,P.fg);
+ let yy=Math.max(y0+hf.h+gap,blockBottom-clH);
+ if(cf){drawText(R,cf,x0,yy,P.accent);yy+=cf.h+cls*0.25;}
+ if(uf)drawText(R,uf,x0,yy,P.fg);}
+function hero(R){const {x,W,H,m,o,spec,A}=R;const P=PANELS[spec.panel]||PANELS.olive;const el=A.prods[spec.prod];const pa=el.naturalWidth/el.naturalHeight;
+ if(o==='land'){const pw=Math.round(W*0.56);drawPhoto(R,0,0,pw,H);x.fillStyle=P.bg;x.fillRect(pw,0,W-pw,H);
+  placeLogo(R,m,m,'photo');stamp(R,pw-m-R.sd,m+(R.lh-R.sd)/2);
+  const bh=H*0.62,bw=bh*pa;bag(R,el,pw-bw/2,H-m*0.55-bh,bw,bh);
+  const tx=pw+bw/2+m*0.7;textColumn(R,P,tx,m*1.1,W-m-tx,H-m*2.1,{});
+ }else{const ph=Math.round(H*(o==='sq'?0.55:0.57));drawPhoto(R,0,0,W,ph);x.fillStyle=P.bg;x.fillRect(0,ph,W,H-ph);
+  const ly=Math.max(m,R.st+m*0.5);placeLogo(R,m,ly,'photo');stamp(R,W-m-R.sd,ly+(R.lh-R.sd)/2);
+  let bh=H*(o==='tall'?0.32:0.43),bw=bh*pa;if(bw>W*0.34){bw=W*0.34;bh=bw/pa;}
+  let bb=ph+bh*0.4;const maxB=H-R.sb-m*0.6;if(bb>maxB)bb=maxB;
+  const bx=W-m*0.9-bw;bag(R,el,bx,bb-bh,bw,bh);
+  const ty=ph+m*0.8;textColumn(R,P,m,ty,bx-m*1.4,H-R.sb-m-ty,{fullW:W-2*m,fullFrom:bb+m*0.3});}}
+function claim(R){const {x,W,H,m,o,spec}=R;const base=Math.min(W,H);drawPhoto(R,0,0,W,H);
+ const land=o==='land';const tw=land?W*0.6:W-2*m;const bottom=H-R.sb-m;
+ const us=Math.max(11,base*0.03);const uf=spec.url?fit(x,spec.url,{fam:'Inter',wt:600,maxW:tw,maxH:us*1.3,max:us,min:us*0.6,lh:1.2}):null;
+ const ls=Math.max(9,base*0.018);const lf=spec.legal?fit(x,LEGAL,{fam:'Inter',wt:400,maxW:tw,maxH:ls*2.8,max:ls,min:ls*0.7,lh:1.3}):null;
+ const below=(uf?uf.h+us*0.6:0)+(lf?lf.h+us*0.4:0);
+ const hf=fit(x,spec.headline,{fam:'Fraunces',wt:600,maxW:tw,maxH:H*(land?0.5:o==='tall'?0.3:0.36),max:base*(land?0.115:0.12),min:base*0.045,lh:1.04});
+ const ty=bottom-below-hf.h;const g0=Math.max(0,ty-base*0.28);const g=x.createLinearGradient(0,g0,0,H);g.addColorStop(0,'rgba(36,45,26,0)');g.addColorStop(0.45,'rgba(36,45,26,0.55)');g.addColorStop(1,'rgba(36,45,26,0.88)');x.fillStyle=g;x.fillRect(0,g0,W,H-g0);
+ const ly=Math.max(m,R.st+m*0.5);placeLogo(R,m,ly,'photo');stamp(R,W-m-R.sd,ly+(R.lh-R.sd)/2);
+ drawText(R,hf,m,ty,C.light);if(hf.over)R.fitIssues.push(1);
+ let yy=ty+hf.h+us*0.6;if(uf){drawText(R,uf,m,yy,C.beige);yy+=uf.h+us*0.4;}if(lf)drawText(R,lf,m,yy,C.beige);}
+function info(R,p,spec,x0,y0,w,k,draw){const {x,W,H}=R;const base=Math.min(W,H);let y=y0;const g=base*0.022*k;const tag=['Új 12 kg-os kiszerelés'];
+ if(spec.newTag){const ts=base*0.026*k;if(draw)chips(R,tag,x0,y,w,ts,{fill:C.red,text:C.white});y+=chipsLayout(x,tag,w,ts).total+g*1.2;}
+ const as=base*0.024*k;x.font=`600 ${as}px Inter`;if(draw){x.fillStyle=C.olive;x.textBaseline='top';x.fillText(p.age.toUpperCase()+' · HIPOALLERGÉN',x0,y);R.boxes.push([x0,y,w,as]);}y+=as*1.3+g*0.5;
+ const nf=fit(x,p.recipe,{fam:'Fraunces',wt:600,maxW:w,maxH:base*0.075*k*1.08*3,max:base*0.075*k,min:base*0.03*k,lh:1.08});if(draw)drawText(R,nf,x0,y,C.olive);y+=nf.h+g;
+ const cs=base*0.024*k;const lbl=[`${p.protein}% fehérje`,`${p.fat}% zsír`];if(draw)chips(R,lbl,x0,y,w,cs,{fg:C.olive});y+=chipsLayout(x,lbl,w,cs).total+g*1.4;
+ const ps=base*0.068*k,pl=base*0.024*k;x.font=`600 ${ps}px Fraunces`;const p4=`${spec.price4} Ft`,p12=`${spec.price12} Ft`;const w4=x.measureText(p4).width,w12=x.measureText(p12).width;const side=w4+w12+ps*0.9<=w;
+ if(!draw&&!side&&Math.max(w4,w12)>w)return 1e6;
+ const bh=pl*1.5+ps*1.05;
+ const block=(lab,val,bx,by)=>{if(!draw)return;x.textBaseline='top';x.font=`600 ${pl}px Inter`;x.fillStyle=C.olive;x.fillText(lab,bx,by);x.font=`600 ${ps}px Fraunces`;x.fillText(val,bx,by+pl*1.5);R.boxes.push([bx,by,x.measureText(val).width,bh]);};
+ if(side){block('4 kg',p4,x0,y);block('12 kg',p12,x0+w4+ps*0.9,y);y+=bh;}else{block('4 kg',p4,x0,y);y+=bh+g*0.6;block('12 kg',p12,x0,y);y+=bh;}
+ return y-y0;}
+function header(R,bg){const ly=Math.max(R.m,R.st+R.m*0.5);placeLogo(R,R.m,ly,bg);stamp(R,R.W-R.m-R.sd,ly+(R.lh-R.sd)/2);return ly+R.lh+Math.max(0,R.clear-R.m*0.6);}
+function legalBottom(R,align){const {x,W,H,m}=R;const base=Math.min(W,H);const ls=Math.max(9,base*0.019);const lf=fit(x,LEGAL,{fam:'Inter',wt:400,maxW:W-2*m,maxH:ls*2.8,max:ls,min:ls*0.7,lh:1.3});const bottom=H-R.sb-m;drawText(R,lf,m,bottom-lf.h,C.olive,align,W-2*m);return bottom-lf.h;}
+function price(R){const {x,W,H,m,o,spec,A}=R;const base=Math.min(W,H);x.fillStyle=C.beige;x.fillRect(0,0,W,H);
+ const p=PROD[spec.prod];const el=A.prods[spec.prod];
+ let top=header(R,'beige')+m*0.7;const contentBottom=legalBottom(R,'left')-m*0.6;
+ if(spec.priceHeadline&&spec.headline){const hf=fit(x,spec.headline,{fam:'Fraunces',wt:600,maxW:W-2*m,maxH:(contentBottom-top)*(o==='tall'?0.16:0.2),max:base*0.065,min:base*0.03,lh:1.08});drawText(R,hf,m,top,C.olive);if(hf.over)R.fitIssues.push(1);top+=hf.h+m*0.6;}
+ if(o==='tall'){const iw=W-2*m;let k=1,ih=0;for(;k>0.5;k-=0.05){ih=info(R,p,spec,0,0,iw,k,false);if(ih<=(contentBottom-top)*0.5)break;}
+  bag(R,el,m,top,iw,contentBottom-top-ih-m*0.6);info(R,p,spec,m,contentBottom-ih,iw,k,true);}
+ else{const colW=(W-2*m)*(o==='land'?0.4:0.46);const rx=m+colW+m*0.7;const rw=W-m-rx;const ah=contentBottom-top;let k=1,ih=0;for(;k>0.4;k-=0.05){ih=info(R,p,spec,0,0,rw,k,false);if(ih<=ah)break;}
+  bag(R,el,m,top,colW,ah);info(R,p,spec,rx,top+Math.max(0,(ah-ih)/2),rw,k,true);}}
+function family(R){const {x,W,H,m,o,spec,A}=R;const base=Math.min(W,H);x.fillStyle=C.beige;x.fillRect(0,0,W,H);
+ let top=header(R,'beige')+m*0.6;let cb=legalBottom(R,'center')-m*0.5;
+ const cs=Math.max(10,base*0.024);if(spec.claims.length){const ic=spec.iconClaims?'olive':null;const ch=chipsLayout(x,spec.claims,W-2*m,cs,!!ic).total;chips(R,spec.claims,m,cb-ch,W-2*m,cs,{fg:C.olive,align:'center',icons:ic});cb-=ch+m*0.6;}
+ if(spec.headline){const hf=fit(x,spec.headline,{fam:'Fraunces',wt:600,maxW:W-2*m,maxH:(cb-top)*(o==='land'?0.28:0.24),max:base*0.075,min:base*0.03,lh:1.06});drawText(R,hf,m,top,C.olive,'center',W-2*m);if(hf.over)R.fitIssues.push(1);top+=hf.h+m*0.7;}
+ const rows=o==='tall'?[[0,1,2],[3,4]]:[[0,1,2,3,4]];const lsz=Math.max(9,base*0.019);const labH=lsz*1.25*2+lsz*0.6;const per=o==='tall'?3:5;
+ const rg=m*0.5;const rowH=(cb-top-(rows.length-1)*rg)/rows.length;const cellW=(W-2*m)/per;
+ rows.forEach((row,ri)=>{const ry=top+ri*(rowH+rg);const rx=m+(W-2*m-row.length*cellW)/2;
+  const bhs=row.map(pi=>{const el=A.prods[PRODUCTS[pi].id];return Math.max(10,Math.min(rowH-labH,(cellW*0.9)/(el.naturalWidth/el.naturalHeight)));});const bmax=Math.max(...bhs);const off=(rowH-labH-bmax)*0.5;
+  row.forEach((pi,ci)=>{const p=PRODUCTS[pi];const el=A.prods[p.id];const bh=bhs[ci];const cx=rx+ci*cellW;const base=ry+off+bmax;
+   bag(R,el,cx+cellW*0.05,base-bh,cellW*0.9,bh);const lf=fit(x,p.fam,{fam:'Inter',wt:600,maxW:cellW*0.92,maxH:lsz*1.25*2,max:lsz,min:lsz*0.7,lh:1.25});drawText(R,lf,cx+cellW*0.04,base+lsz*0.6,C.olive,'center',cellW*0.92);});});}
+const TFN={hero,price,family,claim};
+function render(spec,s,A,els,icons){const {W,H}=spec;const cv=document.createElement('canvas');cv.width=Math.max(1,Math.round(W*s));cv.height=Math.max(1,Math.round(H*s));
+ const x=cv.getContext('2d',{willReadFrequently:true});x.scale(s,s);x.textBaseline='top';
+ const r=W/H;const story=Math.abs(r-9/16)<0.02;const la=A.logo.red.naturalWidth/A.logo.red.naturalHeight;
+ const R={x,W,H,s,A,els,icons,spec,boxes:[],fitIssues:[],logo:null,o:r>1.25?'land':(r<0.7?'tall':(r>=0.92?'sq':'port')),m:Math.round(Math.min(W,H)*0.055),st:story?H*250/1920:0,sb:story?H*300/1920:0,story};
+ R.lw=0.85*Math.min(W/3,(H/3)*la);R.lh=R.lw/la;R.sd=R.lh*1.05;R.clear=R.lh*0.4;
+ TFN[spec.tpl](R);
+ const checks=[];const lr=R.lw/Math.min(W/3,(H/3)*la);
+ checks.push({k:'Logóméret',ok:lr>=0.7&&lr<=1,note:`a 3×3-as rács egy cellájának ${Math.round(lr*100)}%-a (cél: kissé kisebb egy cellánál)`});
+ if(R.logo){const lg=R.logo;
+  checks.push({k:'Logóváltozat',ok:lg.approved,note:lg.approved?`${LOGO_NAME[lg.v]}, jóváhagyott erre az alapra`:`${LOGO_NAME[lg.v]} nem jóváhagyott ${({beige:'bézs alapon',olive:'olíva alapon',terra:'terrakotta alapon',photo:'fotón (olíva csak fehér alapon)'})[lg.bg]}`});
+  checks.push({k:'Kontraszt',ok:!lg.weak,note:`${lg.cr.toFixed(1)}:1`+(lg.weak?', gyenge. Válts változatot vagy kapcsold be a sötétítést.':'')});
+  if(lg.bg==='photo')checks.push({k:'Homogén háttér',ok:lg.hetero<0.17,note:lg.hetero<0.17?'Nyugodt képrész a logó alatt':'Mozgalmas képrész a logó alatt. Mozgasd a fókuszpontot, vagy kapcsold be a sötétítést.'});
+  const lb=R.logoBox,c=R.clear;const z=[lb[0]-c,lb[1]-c,lb[2]+2*c,lb[3]+2*c];const hit=R.boxes.some(b=>b[0]<z[0]+z[2]&&b[0]+b[2]>z[0]&&b[1]<z[1]+z[3]&&b[1]+b[3]>z[1]);
+  checks.push({k:'Védőtávolság',ok:!hit,note:hit?'Valami a logó védőzónájába lóg':'Szabad tér a logó körül'});}
+ if(story){const all=R.logoBox?[...R.boxes,R.logoBox]:R.boxes;const bad=all.some(b=>b[1]<R.st-0.5||b[1]+b[3]>H-R.sb+0.5);checks.push({k:'Safe zone',ok:!bad,note:bad?'Logó vagy szöveg a 9:16 safe zone-ban':'Logó és szöveg a biztonságos sávban'});}
+ const words=[...toneWarn(spec.headline),...toneWarn(spec.closing)];
+ checks.push({k:'Szöveg',ok:!words.length&&!R.fitIssues.length,note:words.length?words[0]:(R.fitIssues.length?'Túl hosszú ehhez a mérethez, rövidíts.':'Nincs tiltott szó, a szöveg elfér')});
+ return {canvas:cv,checks,logo:R.logo,ok:checks.every(c=>c.ok)};}
+
+const DB={open(){return new Promise((res,rej)=>{const r=indexedDB.open('fitactive-banner',1);r.onupgradeneeded=()=>r.result.createObjectStore('p',{keyPath:'name'});r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error);});},
+ async tx(mode,fn){const d=await this.open();return new Promise((res,rej)=>{const t=d.transaction('p',mode);const st=t.objectStore('p');const rq=fn(st);t.oncomplete=()=>res(rq&&rq.result);t.onerror=()=>rej(t.error);});},
+ put(v){return this.tx('readwrite',s=>s.put(v));},get(n){return this.tx('readonly',s=>s.get(n));},all(){return this.tx('readonly',s=>s.getAll());},del(n){return this.tx('readwrite',s=>s.delete(n));}};
+const loadImg=src=>new Promise(r=>{const i=new Image();i.onload=()=>r(i);i.onerror=()=>r(i);i.src=src;});
+const dl=(blob,name)=>{const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=name;document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove();},2000);};
+const toBlob=(cv,fmt,q)=>new Promise(r=>cv.toBlob(r,fmt==='jpg'?'image/jpeg':'image/png',q));
+const tick=()=>new Promise(r=>setTimeout(r,0));
+const tint=(img,col)=>{const c=document.createElement('canvas');c.width=img.naturalWidth;c.height=img.naturalHeight;const x=c.getContext('2d');x.drawImage(img,0,0);x.globalCompositeOperation='source-in';x.fillStyle=col;x.fillRect(0,0,c.width,c.height);return c;};
+
+class Component extends DCLogic {
+  state={unlocked:(()=>{try{return localStorage.getItem('fitactive-banner-unlock')===PW_HASH;}catch(e){return false;}})(),pw:'',pwErr:false,doc:DEFAULT_DOC,step:1,vw:typeof window!=='undefined'?window.innerWidth:1280,drag:false,pvSize:null,safeMask:true,suggestions:[],suggesting:false,toast:'',editKey:null,projOpen:false,projects:[],cw:'',ch:'',pairImg:null,pairProd:null,zip:null,tick:0};
+  hist=[];fut=[];els={};cache={};gen=0;ready=false;
+  fileRef=React.createRef();jsonRef=React.createRef();
+  async componentDidMount(){
+    this.onResize=()=>this.setState({vw:window.innerWidth});window.addEventListener('resize',this.onResize);
+    this.onKey=e=>{const k=(e.key||'').toLowerCase();if((e.metaKey||e.ctrlKey)&&k==='z'){e.preventDefault();e.shiftKey?this.redo():this.undo();}else if((e.metaKey||e.ctrlKey)&&k==='y'){e.preventDefault();this.redo();}};
+    window.addEventListener('keydown',this.onKey);
+    try{const a=await DB.get('__autosave__');if(a&&a.doc)this.setState({doc:{...DEFAULT_DOC,...a.doc}});}catch(e){}
+    const [red,cream,olive,st]=await Promise.all(['assets/logo-red.png','assets/logo-cream.png','assets/logo-olive.png','assets/stamp.png'].map(loadImg));
+    const prods={};await Promise.all(PRODUCTS.map(async p=>{prods[p.id]=await loadImg(p.img);}));
+    const ic={};await Promise.all(['buza','szarnyas','izulet','szor'].map(async k=>{ic[k]=await loadImg('assets/ico-'+k+'.png');}));
+    this.icons={olive:ic,cream:Object.fromEntries(Object.entries(ic).map(([k,v])=>[k,tint(v,C.light)]))};
+    this.A={logo:{red,cream,olive},stamp:st,prods};
+    try{await Promise.all(['600 40px Fraunces','400 20px Inter','600 20px Inter','400 20px "JetBrains Mono"'].map(f=>document.fonts.load(f)));}catch(e){}
+    this.ready=true;this.ensureEls();this.scheduleRender();
+  }
+  componentWillUnmount(){window.removeEventListener('resize',this.onResize);window.removeEventListener('keydown',this.onKey);}
+  componentDidUpdate(pp){if(pp.iconClaims!==this.props.iconClaims||pp.previewMax!==this.props.previewMax)this.scheduleRender();}
+  toastMsg(t){clearTimeout(this.tt);this.setState({toast:t});this.tt=setTimeout(()=>this.setState({toast:''}),2600);}
+  commit(patch,ck){const prev=this.state.doc;const now=Date.now();
+    if(!(ck&&ck===this.lastCk&&now-this.lastT<1200)){this.hist.push(prev);if(this.hist.length>120)this.hist.shift();this.fut=[];}
+    this.lastCk=ck;this.lastT=now;const p=typeof patch==='function'?patch(prev):patch;this.setState({doc:{...prev,...p}},()=>this.changed());}
+  undo(){if(!this.hist.length)return;this.fut.push(this.state.doc);this.lastCk=null;this.setState({doc:this.hist.pop()},()=>this.changed());}
+  redo(){if(!this.fut.length)return;this.hist.push(this.state.doc);this.lastCk=null;this.setState({doc:this.fut.pop()},()=>this.changed());}
+  changed(){this.ensureEls();this.scheduleRender();clearTimeout(this.at);this.at=setTimeout(()=>{DB.put({name:'__autosave__',doc:this.state.doc,savedAt:Date.now()}).catch(()=>{});},1200);}
+  ensureEls(){for(const im of this.state.doc.images){if(!this.els[im.id]){const i=new Image();i.onload=()=>this.scheduleRender();i.src=im.src;this.els[im.id]=i;}}}
+  allSizes(){return [...PRESETS,...(this.state.doc.customSizes||[])];}
+  makeItem(tpl,p,i,z){const d=this.state.doc;const T=TPLS.find(t=>t.id===tpl);const imgDim=tpl==='hero'||tpl==='claim',prodDim=tpl==='hero'||tpl==='price';
+    const im=imgDim&&i?d.images.find(x=>x.id===i):null;const pr=prodDim?PROD[p]:null;
+    const pS=prodDim?pr.slug:(tpl==='family'?'csalad':'wheatfree');const iS=imgDim?(im?slug(dispName(im)):'foto'):'packshot';
+    return {key:[tpl,prodDim?p:'-',imgDim?(i||'-'):'-',z.id].join('|'),tpl,prod:prodDim?p:d.activeProd,img:imgDim?i:null,w:z.w,h:z.h,size:z,
+      base:`FitActive_WF_${T.slug}_${pS}_${iS}_${z.w}x${z.h}`,combo:tpl==='family'?'Mind az öt termék':[im&&(dispName(im)),pr&&pr.short].filter(Boolean).join(' + ')};}
+  getItems(){const d=this.state.doc;const tpl=d.template;const imgDim=tpl==='hero'||tpl==='claim',prodDim=tpl==='hero'||tpl==='price';
+    const sizes=this.allSizes().filter(z=>d.sizes.includes(z.id));let imgs=d.bulk?d.images.map(i=>i.id):(d.activeImg?[d.activeImg]:[]);if(!imgs.length)imgs=[null];
+    const prods=d.products.length?d.products:[d.activeProd];let combos=[];
+    if(d.bulk&&d.bulkSource==='pairs'&&imgDim&&prodDim&&d.pairs.length)combos=d.pairs.map(p=>[p.imgId,p.prodId]);
+    else{const I=imgDim?imgs:[null];const P=prodDim?prods:[null];I.forEach(i=>P.forEach(p=>combos.push([i,p])));}
+    const out=[];const seen={};combos.forEach(([i,p])=>sizes.forEach(z=>{const it=this.makeItem(tpl,p||d.activeProd,i,z);if(!seen[it.key]){seen[it.key]=1;out.push(it);}}));return out;}
+  previewItem(){const d=this.state.doc;const sizes=this.allSizes();const sel=sizes.filter(z=>d.sizes.includes(z.id));const z=sizes.find(x=>x.id===this.state.pvSize&&d.sizes.includes(x.id))||sel[0]||PRESETS[1];return this.makeItem(d.template,d.activeProd,d.activeImg,z);}
+  specFor(it){const d=this.state.doc;const ov=d.overrides[it.key]||{};const im=it.img?d.images.find(i=>i.id===it.img):null;const el=im&&this.els[im.id];
+    return {tpl:it.tpl,W:it.w,H:it.h,prod:it.prod||d.activeProd,img:im?{id:im.id,fx:im.fx,fy:im.fy,ready:!!(el&&el.naturalWidth)}:null,headline:ov.headline||d.headline,closing:d.closing,url:d.url,claims:d.claims,
+      legal:d.legal||it.tpl==='price'||it.tpl==='family',panel:ov.panel||d.panel,logoMode:ov.logoMode||d.logoMode,scrim:ov.scrim!=null?ov.scrim:d.scrim,price4:d.price4,price12:d.price12,newTag:d.newTag,priceHeadline:d.priceHeadline,iconClaims:this.props.iconClaims??true};}
+  scheduleRender(){clearTimeout(this.rt);this.rt=setTimeout(()=>this.runRender(),90);}
+  async runRender(){if(!this.ready)return;const gen=++this.gen;const st=this.state;const jobs=[];
+    jobs.push({ck:'pv',it:this.previewItem(),max:this.props.previewMax??900});
+    if(st.editKey){const it=this.getItems().find(i=>i.key===st.editKey);if(it)jobs.push({ck:'edit',it,max:820});}
+    if(st.step===3){const d=st.doc;TPLS.forEach(t=>jobs.push({ck:'tpl:'+t.id,it:this.makeItem(t.id,d.activeProd,d.activeImg,PRESETS[1]),max:300}));}
+    if(st.step===4)this.getItems().forEach(it=>jobs.push({ck:it.key,it,max:440}));
+    let n=0;for(const j of jobs){if(gen!==this.gen)return;const spec=this.specFor(j.it);const sig=JSON.stringify(spec)+'|'+j.max;const c=this.cache[j.ck];if(c&&c.sig===sig)continue;
+      const s=Math.min(1,j.max/Math.max(spec.W,spec.H));const out=render(spec,s,this.A,this.els,this.icons);
+      this.cache[j.ck]={sig,url:out.canvas.toDataURL('image/jpeg',0.88),checks:out.checks,logo:out.logo,ok:out.ok};
+      if(++n%3===0){this.setState(s=>({tick:s.tick+1}));await tick();}}
+    this.setState(s=>({tick:s.tick+1}));}
+  async renderFull(it){const d=this.state.doc;const out=render(this.specFor(it),d.scale,this.A,this.els,this.icons);const ext=d.format==='jpg'?'jpg':'png';const blob=await toBlob(out.canvas,d.format,d.quality);return {blob,name:`${it.base}${d.scale===2?'_2x':''}.${ext}`};}
+  async downloadOne(it){if(!this.ready)return;const {blob,name}=await this.renderFull(it);dl(blob,name);}
+  async downloadZip(){const items=this.getItems().filter(i=>!this.state.doc.excluded[i.key]);if(!items.length){this.toastMsg('Nincs letölthető banner.');return;}
+    if(!window.JSZip){this.toastMsg('A ZIP modul még töltődik, próbáld újra.');return;}
+    const zip=new window.JSZip();for(let k=0;k<items.length;k++){this.setState({zip:`${k+1}/${items.length}`});const {blob,name}=await this.renderFull(items[k]);zip.file(name,blob);await tick();}
+    this.setState({zip:'Tömörítés…'});const b=await zip.generateAsync({type:'blob'});dl(b,`FitActive_WF_${slug(this.state.doc.projectName)}.zip`);this.setState({zip:null});this.toastMsg(`${items.length} banner letöltve ZIP-ben`);}
+  async addFiles(files){const ok=[...files].filter(f=>/image\/(jpeg|png|webp)/.test(f.type));if(!ok.length){this.toastMsg('Csak JPG, PNG vagy WEBP tölthető fel.');return;}
+    this.toastMsg(`${ok.length} kép feldolgozása…`);const added=[];
+    for(const f of ok){const url=URL.createObjectURL(f);const img=await loadImg(url);const sc=Math.min(1,4000/Math.max(img.naturalWidth,img.naturalHeight));const cv=document.createElement('canvas');cv.width=Math.round(img.naturalWidth*sc);cv.height=Math.round(img.naturalHeight*sc);cv.getContext('2d').drawImage(img,0,0,cv.width,cv.height);URL.revokeObjectURL(url);
+      added.push({id:'i'+Date.now().toString(36)+Math.random().toString(36).slice(2,6),name:f.name,label:f.name.replace(/\.[^.]+$/,''),src:cv.toDataURL('image/jpeg',0.92),w:cv.width,h:cv.height,fx:0.5,fy:0.4});}
+    added.forEach(a=>{const m=PRODUCTS.find(p=>slug(a.label).includes(slug(p.dog)));if(m)a.label=m.dog;else a.label='';});
+    this.commit(d=>({images:[...d.images,...added],activeImg:d.activeImg||added[0].id}));this.toastMsg(`${added.length} kép a képtárban`);}
+  setText(field,v,ck){if(field==='url'){this.commit({url:v},ck);return;}const r=fixBrand(v);if(r.changed)this.toastMsg('A márkanév javítva: FitActive');this.commit({[field]:r.out},ck);}
+  async suggest(){const d=this.state.doc;const p=PROD[d.activeProd];const T=TPLS.find(t=>t.id===d.template);this.setState({suggesting:true});let out=[];
+    try{if(window.claude&&window.claude.complete){const prompt=`Te a FitActive kutyatáp magyar szövegírója vagy. Írj 3 új, rövid (max 48 karakter) banner-címsort a "FitActive Originals Wheat-Free" (búzamentes) termékbevezetéshez.\nTermék: ${d.template==='family'?'mind az öt recept (kölyök, felnőtt, light, senior)':p.age+' · '+p.recipe+' · arca: '+p.dog+' ('+p.breed+')'}\nSablon: ${T.name}\nHangnem: gondoskodó, megbízható, természetes; a gazdi nézőpontjából. Tilos: szuperlatívusz (pl. legjobb), "100%", "gluténmentes", félelemkeltés, túlzó ígéret. A márkanév mindig "FitActive". Példák a hangra: "Hagyd ki a búzát. Ne a kalandot." · "Észreveszed. És jól döntesz."\nCsak egy JSON tömböt adj vissza 3 stringgel.`;
+      const txt=await window.claude.complete(prompt);const m=String(txt).match(/\[[\s\S]*\]/);if(m)out=JSON.parse(m[0]).filter(s=>typeof s==='string').map(s=>fixBrand(s.trim()).out).filter(s=>s.length<=60&&!toneWarn(s).length);}}catch(e){}
+    const pool=[...(d.template==='family'?[]:(POOL[d.activeProd]||[])),...POOL.all].filter(s=>!out.includes(s)&&s!==d.headline).sort(()=>Math.random()-0.5);while(out.length<3&&pool.length)out.push(pool.shift());
+    this.setState({suggestions:out.slice(0,3),suggesting:false});}
+  async openProjects(){let list=[];try{list=(await DB.all()).filter(p=>p.name!=='__autosave__');}catch(e){}this.setState({projOpen:true,projects:list.sort((a,b)=>b.savedAt-a.savedAt)});}
+  async saveProject(){const d=this.state.doc;try{await DB.put({name:d.projectName||'Névtelen projekt',doc:d,savedAt:Date.now()});this.toastMsg(`Mentve: ${d.projectName}`);}catch(e){this.toastMsg('A mentés nem sikerült (tárhely?).');}}
+  loadDoc(doc){this.hist.push(this.state.doc);this.fut=[];this.cache={};this.els={};this.setState({doc:{...DEFAULT_DOC,...doc},projOpen:false,editKey:null},()=>this.changed());this.toastMsg(`Betöltve: ${doc.projectName}`);}
+  tg(on,label,fn,dis){return {track:on?C.olive:'rgba(59,74,44,.25)',knob:on?'19px':'3px',knobS:on?'17px':'3px',label,toggle:dis?()=>{}:fn,op:dis?0.6:1,bg:on?C.beige:C.white};}
+  seg(opts,cur,fn){return opts.map(o=>({label:o.label,bg:o.v===cur?C.olive:C.white,fg:o.v===cur?C.light:C.olive,pick:()=>fn(o.v)}));}
+  checkRows(cs){return (cs||[]).map(c=>({k:c.k,note:c.note,dot:c.ok?'#4E8A3A':'#E0B020'}));}
+
+  renderVals(){
+    const st=this.state,d=st.doc;const mob=st.vw<900,wide=st.vw>=1320;
+    const L={dir:mob?'column':'row',navW:mob?'100%':'236px',navDir:mob?'row':'column',navPad:mob?'8px 10px':'20px 14px',navBorderR:mob?'0':'1px solid rgba(59,74,44,.12)',navBorderB:mob?'1px solid rgba(59,74,44,.12)':'0',
+      mainPad:mob?'18px 16px 40px':'28px 32px 60px',asideW:mob?'100%':(wide?'440px':'360px'),asideBorder:mob?'0':'1px solid rgba(59,74,44,.12)',asidePos:mob?'static':'sticky',asideMaxH:mob?'none':'calc(100vh - 60px)',cardMin:mob?'150px':'230px',stepDesc:mob?'none':'block',desk:!mob};
+    const STEPS=[['Képek','Feltöltés, fókuszpont'],['Termék','SKU-k, párosítás'],['Sablon + szöveg','Elrendezés, szövegek, logó'],['Méretek + export','Előnézet, ZIP']];
+    const steps=STEPS.map((s,i)=>{const n=i+1,a=n===st.step,done=n<st.step;return {t:s[0],d:s[1],mark:done?'✓':String(n),bg:a?C.olive:'transparent',fg:a?C.light:C.olive,sub:a?C.beige:'#5A6450',ring:a?C.light:C.olive,dotBg:done?C.olive:'transparent',dotFg:done?C.light:(a?C.light:C.olive),go:()=>this.setState({step:n},()=>this.scheduleRender())};});
+    const items=this.getItems();const tpl=d.template;const imgDim=tpl==='hero'||tpl==='claim',prodDim=tpl==='hero'||tpl==='price';
+    const T=TPLS.find(t=>t.id===tpl);
+    const nImg=imgDim?(d.bulk?(d.bulkSource==='pairs'&&prodDim&&d.pairs.length?d.pairs.length:Math.max(1,d.images.length)):1):1;
+    const summary={imgs:`${d.images.length} kép a képtárban`,prods:`${d.products.length} termék kiválasztva`,tpl:`Sablon: ${T.name}`,sizes:`${d.sizes.length} méret`,total:`${items.length} banner${d.bulk?' · tömeges mód':''}`};
+    const act=d.images.find(i=>i.id===d.activeImg)||d.images[0];
+    const imageCards=d.images.map(im=>{const pc=d.pairs.filter(p=>p.imgId===im.id).length;return {...im,pos:`${im.fx*100}% ${im.fy*100}%`,border:act&&im.id===act.id?C.olive:'transparent',hasPairs:pc>0,pairText:`${pc} páros`,
+      select:()=>this.commit({activeImg:im.id},'sel'),remove:e=>{e.stopPropagation();this.commit(dd=>{const images=dd.images.filter(x=>x.id!==im.id);return {images,pairs:dd.pairs.filter(p=>p.imgId!==im.id),activeImg:dd.activeImg===im.id?(images[0]&&images[0].id)||null:dd.activeImg};});},
+      onLabel:e=>{const v=e.target.value;this.commit(dd=>({images:dd.images.map(x=>x.id===im.id?{...x,label:v}:x)}),'lbl'+im.id);}};});
+    const actV=act?{src:act.src,label:dispName(act),pos:`${act.fx*100}% ${act.fy*100}%`,fxp:`${act.fx*100}%`,fyp:`${act.fy*100}%`,fxy:`x ${Math.round(act.fx*100)}% · y ${Math.round(act.fy*100)}%`}:{src:'',label:'',pos:'50% 50%',fxp:'50%',fyp:'50%',fxy:''};
+    const productCards=PRODUCTS.map(p=>{const sel=d.products.includes(p.id);return {...p,border:p.id===d.activeProd?C.olive:(sel?'rgba(59,74,44,.35)':'transparent'),checkBg:sel?C.olive:C.white,mark:sel?'✓':'',
+      toggle:()=>this.commit(dd=>{let ps=dd.products.includes(p.id)?(dd.activeProd===p.id||dd.products.length===1?dd.products.filter(x=>x!==p.id):dd.products):[...dd.products,p.id];if(dd.products.includes(p.id)&&dd.activeProd!==p.id)return {activeProd:p.id};if(!ps.length)ps=[p.id];return {products:ps,activeProd:ps.includes(p.id)?p.id:ps[0]};})};});
+    const pairImgVal=st.pairImg&&d.images.find(i=>i.id===st.pairImg)?st.pairImg:(act&&act.id)||'';const pairProdVal=st.pairProd||d.activeProd;
+    const pim=d.images.find(i=>i.id===pairImgVal);const dogMatch=pim&&PRODUCTS.find(p=>slug(p.dog)===slug(pim.label));
+    const pairHint={show:!!(dogMatch&&!d.pairs.some(p=>p.imgId===pim.id&&p.prodId===dogMatch.id)),text:dogMatch?`„${pim.label}” a(z) ${dogMatch.short} arca. Párosítsam?`:'',apply:()=>{this.commit(dd=>({pairs:[...dd.pairs,{id:'p'+Date.now(),imgId:pim.id,prodId:dogMatch.id}]}));this.toastMsg(`Mentve: ${pim.label} + ${dogMatch.short}`);}};
+    const pairChips=d.pairs.map(p=>{const im=d.images.find(i=>i.id===p.imgId);return {label:`${im?(dispName(im)):'?'} + ${PROD[p.prodId].short}`,remove:()=>this.commit(dd=>({pairs:dd.pairs.filter(x=>x.id!==p.id)}))};});
+    const tc=k=>this.cache[k];
+    const tplCards=TPLS.map(t=>({...t,thumb:(tc('tpl:'+t.id)||{}).url||'',has:!!tc('tpl:'+t.id),border:t.id===tpl?C.olive:'transparent',pick:()=>this.commit({template:t.id})}));
+    const swOpts=[{v:'olive',label:'Olíva',sw:C.olive},{v:'beige',label:'Bézs',sw:C.beige},{v:'terra',label:'Terrakotta',sw:C.terra}];
+    const logoList=[{v:'auto',label:'Automatikus',sw:'linear-gradient(135deg,#E30613 50%,#FAF6EE 50%)'},{v:'red',label:'Elsődleges',sw:C.red},{v:'cream',label:'Inverz',sw:C.light},{v:'olive',label:'Monokróm',sw:C.olive}];
+    const pvC=tc('pv');const lg=pvC&&pvC.logo;const vn={red:'elsődleges (piros)',cream:'inverz (krém)',olive:'monokróm (olíva)'};
+    const logoAdvice=!lg?'Előnézet készül…':(lg.bg==='photo'?`A logó alatti fotórész fényessége ${lg.bright}%. A brand book szerint: ${vn[lg.sugg]} logó. Kontraszt: ${lg.cr.toFixed(1)}:1.`:`${({beige:'Bézs',olive:'Olíva',terra:'Terrakotta'})[lg.bg]} alapon a brand book szerint: ${vn[lg.sugg]} logó.`)+(lg&&lg.forced?` A választott ${vn[lg.asked]} változat itt nem jóváhagyott, ezért automatikusan ${vn[lg.v]} került rá.`:'')+' Árnyék, kontúr és torzítás nélkül, bőséges védőtávolsággal.';
+    const legalForced=tpl==='price'||tpl==='family';
+    const textToggles=[this.tg(d.legal||legalForced,legalForced?'Apró jogi sor · ezen a sablonon kötelező':'Apró jogi sor',()=>this.commit({legal:!d.legal}),legalForced)];
+    if(tpl==='price'){textToggles.push(this.tg(d.newTag,'„Új 12 kg-os kiszerelés” címke',()=>this.commit({newTag:!d.newTag})));textToggles.push(this.tg(d.priceHeadline,'Címsor az ár-kártyán',()=>this.commit({priceHeadline:!d.priceHeadline})));}
+    const allS=this.allSizes();const groups=['Social','Fekvő','Hírlevél','Egyedi'];
+    const sizeGroups=groups.map(g=>({name:g,items:allS.filter(z=>(z.group||'Egyedi')===g).map(z=>{const on=d.sizes.includes(z.id);return {dim:`${z.w}×${z.h}`,label:z.label,border:on?C.olive:'rgba(59,74,44,.18)',bg:on?C.beige:C.white,checkBg:on?C.olive:C.white,mark:on?'✓':'',custom:z.group==='Egyedi',
+      toggle:()=>this.commit(dd=>({sizes:dd.sizes.includes(z.id)?dd.sizes.filter(x=>x!==z.id):[...dd.sizes,z.id]})),remove:()=>this.commit(dd=>({customSizes:dd.customSizes.filter(x=>x.id!==z.id),sizes:dd.sizes.filter(x=>x!==z.id)}))};})})).filter(g=>g.items.length);
+    const mkGrid=it=>{const c=tc(it.key);const ex=!!d.excluded[it.key];const story=Math.abs(it.w/it.h-9/16)<0.02;const fails=c?c.checks.filter(x=>!x.ok):[];const ov=!!d.overrides[it.key];
+      return {key:it.key,thumb:c?c.url:'',hasThumb:!!c,ar:`${it.w}/${it.h}`,dim:`${it.w}×${it.h}`,combo:it.combo,file:`${it.base}${d.scale===2?'_2x':''}.${d.format==='jpg'?'jpg':'png'}`,mask:story&&st.safeMask,
+        dot:!c?'#C9C2B2':(c.ok?'#4E8A3A':'#E0B020'),checkLabel:!c?'…':(c.ok?'Márka OK':'Ellenőrizd'),checkTitle:c?c.checks.map(x=>`${x.ok?'✓':'!'} ${x.k}: ${x.note}`).join('\n'):'',issues:fails.map(x=>({t:`${x.k}: ${x.note}`})),
+        excluded:ex,op:ex?0.35:1,exLabel:ex?'Visszavesz':'Kizár',editLabel:ov?'Finomítva ✎':'Finomít',download:()=>this.downloadOne(it),edit:()=>this.setState({editKey:it.key},()=>this.scheduleRender()),
+        toggleEx:()=>this.commit(dd=>{const e={...dd.excluded};if(e[it.key])delete e[it.key];else e[it.key]=true;return {excluded:e};})};};
+    const gridItems=st.step===4?items.map(mkGrid):[];const included=items.filter(i=>!d.excluded[i.key]).length;
+    const dims=[];if(imgDim)dims.push(`${nImg} ${d.bulk&&d.bulkSource==='pairs'&&prodDim&&d.pairs.length?'páros':'kép'}`);if(prodDim&&!(d.bulk&&d.bulkSource==='pairs'&&d.pairs.length&&imgDim))dims.push(`${Math.max(1,d.products.length)} termék`);dims.push(`${d.sizes.length} méret`);
+    const pvIt=this.previewItem();const pr=pvIt.w/pvIt.h;const pvStory=Math.abs(pr-9/16)<0.02;
+    const pv={url:pvC?pvC.url:'',has:!!pvC,ar:`${pvIt.w}/${pvIt.h}`,wcss:`min(100%, calc(58vh * ${pr.toFixed(4)}))`,mask:pvStory&&st.safeMask,grid:!!this.props.showLogoGrid,combo:pvIt.combo,checks:this.checkRows(pvC&&pvC.checks)};
+    const selSizes=allS.filter(z=>d.sizes.includes(z.id));
+    const pvSizes=(selSizes.length?selSizes:[PRESETS[1]]).map(z=>({label:`${z.w}×${z.h}`,bg:z.id===pvIt.size.id?C.olive:C.white,fg:z.id===pvIt.size.id?C.light:C.olive,pick:()=>this.setState({pvSize:z.id},()=>this.scheduleRender())}));
+    const ek=st.editKey&&items.find(i=>i.key===st.editKey);const ov=ek?(d.overrides[ek.key]||{}):{};const setOv=patch=>this.commit(dd=>{const o={...dd.overrides};const n={...(o[ek.key]||{}),...patch};Object.keys(n).forEach(k=>{if(n[k]===''||n[k]==null)delete n[k];});if(Object.keys(n).length)o[ek.key]=n;else delete o[ek.key];return {overrides:o};},'ov'+ek.key);
+    const eC=tc('edit');const ed=ek?{has:!!eC,url:eC?eC.url:'',file:ek.base,headline:ov.headline||'',warn:toneWarn(ov.headline).map(t=>({t})),isHero:ek.tpl==='hero',
+      onHeadline:e=>{const r=fixBrand(e.target.value);if(r.changed)this.toastMsg('A márkanév javítva: FitActive');setOv({headline:r.out});},
+      panels:swOpts.map(o=>({...o,border:(ov.panel||d.panel)===o.v?C.olive:'transparent',pick:()=>setOv({panel:o.v})})),
+      logos:logoList.map(o=>({...o,border:(ov.logoMode||d.logoMode)===o.v?C.olive:'transparent',pick:()=>setOv({logoMode:o.v})})),
+      scrim:this.tg(ov.scrim!=null?ov.scrim:d.scrim,'',()=>setOv({scrim:!(ov.scrim!=null?ov.scrim:d.scrim)})),checks:this.checkRows(eC&&eC.checks),
+      download:()=>this.downloadOne(ek),reset:()=>this.commit(dd=>{const o={...dd.overrides};delete o[ek.key];return {overrides:o};})}:{has:false,url:'',file:'',headline:'',warn:[],isHero:false,panels:[],logos:[],scrim:this.tg(false,'',()=>{}),checks:[],download:()=>{},reset:()=>{},onHeadline:()=>{}};
+    const fmt=v=>new Date(v).toLocaleString('hu-HU',{year:'numeric',month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'});
+    const hlW=toneWarn(d.headline);
+    return {
+      doc:d,L,steps,summary,is1:st.step===1,is2:st.step===2,is3:st.step===3,is4:st.step===4,
+      undo:()=>this.undo(),redo:()=>this.redo(),undoOp:this.hist.length?1:0.45,redoOp:this.fut.length?1:0.45,
+      bulkTg:this.tg(d.bulk,'',()=>{this.commit({bulk:!d.bulk});this.toastMsg(!d.bulk?'Tömeges mód: minden kép × termék × méret':'Egyedi mód: az aktív kép');}),
+      openProjects:()=>this.openProjects(),saveProject:()=>this.saveProject(),onProjectName:e=>this.commit({projectName:e.target.value},'pn'),
+      stop:e=>e.stopPropagation(),fileRef:this.fileRef,jsonRef:this.jsonRef,
+      dz:{border:st.drag?C.olive:'rgba(59,74,44,.3)',bg:st.drag?C.beige:C.white},
+      onDragOver:e=>{e.preventDefault();if(!st.drag)this.setState({drag:true});},onDragLeave:()=>this.setState({drag:false}),
+      onDrop:e=>{e.preventDefault();this.setState({drag:false});this.addFiles(e.dataTransfer.files);},pickFiles:()=>this.fileRef.current&&this.fileRef.current.click(),
+      onFileInput:e=>{this.addFiles(e.target.files);e.target.value='';},
+      hasImages:d.images.length>0,noImages:!d.images.length,imageCards,act:actV,
+      setFocus:e=>{if(!act)return;const r=e.currentTarget.getBoundingClientRect();const fx=Math.min(1,Math.max(0,(e.clientX-r.left)/r.width)),fy=Math.min(1,Math.max(0,(e.clientY-r.top)/r.height));this.commit(dd=>({images:dd.images.map(x=>x.id===act.id?{...x,fx,fy}:x)}),'focus'+act.id);},
+      cropPreviews:[{label:'1:1',w:'52px',h:'52px'},{label:'4:5',w:'48px',h:'60px'},{label:'9:16',w:'38px',h:'68px'},{label:'16:9',w:'80px',h:'45px'},{label:'1.91:1',w:'86px',h:'45px'}],onActLabel:e=>{if(!act)return;const v=e.target.value;this.commit(dd=>({images:dd.images.map(x=>x.id===act.id?{...x,label:v}:x)}),'lbl'+act.id);},
+      productCards,pairThumb:pim?pim.src:'',pairImgVal,pairProdVal,pairImgOpts:d.images.map(i=>({v:i.id,t:dispName(i)})),pairProdOpts:PRODUCTS.map(p=>({v:p.id,t:p.short})),
+      onPairImg:e=>this.setState({pairImg:e.target.value}),onPairProd:e=>this.setState({pairProd:e.target.value}),
+      savePair:()=>{if(!pim)return;if(d.pairs.some(p=>p.imgId===pim.id&&p.prodId===pairProdVal)){this.toastMsg('Ez a páros már mentve van.');return;}this.commit(dd=>({pairs:[...dd.pairs,{id:'p'+Date.now(),imgId:pim.id,prodId:pairProdVal}]}));this.toastMsg(`Mentve: ${dispName(pim)} + ${PROD[pairProdVal].short}`);},
+      pairHint,hasPairs:d.pairs.length>0,pairChips,
+      tplCards,showPanel:tpl==='hero',panelOpts:swOpts.map(o=>({...o,border:d.panel===o.v?C.olive:'transparent',pick:()=>this.commit({panel:o.v})})),
+      hlLabel:tpl==='claim'?'A nagy mondat':'Fő sor',hlCount:`${d.headline.length}/60`,hlCountColor:d.headline.length>52?'#8E4426':'#5A6450',
+      onHeadline:e=>this.setText('headline',e.target.value,'hl'),onBank:e=>{if(e.target.value)this.setText('headline',e.target.value);},bank:HEADLINES.map(v=>({v})),
+      suggest:()=>this.suggest(),suggestLabel:st.suggesting?'Gondolkodom…':'Javasolj szöveget',hasSuggestions:st.suggestions.length>0,suggestions:st.suggestions.map(t=>({t,use:()=>this.setText('headline',t)})),
+      hlWarn:hlW.map(t=>({t})),showClosing:tpl==='hero',showUrlOnly:tpl==='claim',clCount:`${d.closing.length}/40`,clWarn:toneWarn(d.closing).map(t=>({t})),
+      onClosing:e=>this.setText('closing',e.target.value,'cl'),onUrl:e=>this.setText('url',e.target.value,'url'),
+      showClaims:tpl==='hero'||tpl==='family',claimChips:CLAIMS.map(c=>{const on=d.claims.includes(c.l);return {label:c.l,icon:'assets/ico-'+c.i+'.png',bg:on?C.olive:C.white,fg:on?C.light:C.olive,toggle:()=>this.commit(dd=>({claims:dd.claims.includes(c.l)?dd.claims.filter(x=>x!==c.l):[...dd.claims,c.l]}))};}),
+      isPrice:tpl==='price',onPrice4:e=>this.commit({price4:e.target.value.replace(/[^\d\s]/g,'')},'p4'),onPrice12:e=>this.commit({price12:e.target.value.replace(/[^\d\s]/g,'')},'p12'),textToggles,
+      logoOpts:logoList.map(o=>({...o,border:d.logoMode===o.v?C.olive:'transparent',pick:()=>this.commit({logoMode:o.v})})),logoAdvice,logoWeak:!!(lg&&lg.weak&&!d.scrim&&lg.bg==='photo'),logoForced:!!(lg&&lg.forced),
+      scrimOn:()=>this.commit({scrim:true}),scrimTg:this.tg(d.scrim,'',()=>this.commit({scrim:!d.scrim})),
+      packMeta:()=>this.commit({sizes:[...META_PACK]}),packFull:()=>this.commit({sizes:allS.map(z=>z.id)}),packNone:()=>this.commit({sizes:[]}),sizeGroups,
+      cw:st.cw,ch:st.ch,onCw:e=>this.setState({cw:e.target.value}),onCh:e=>this.setState({ch:e.target.value}),
+      addCustom:()=>{const w=parseInt(st.cw,10),h=parseInt(st.ch,10);if(!(w>=100&&w<=5000&&h>=100&&h<=5000)){this.toastMsg('Adj meg 100 és 5000 px közötti méretet.');return;}const id=`${w}x${h}`;if(allS.some(z=>z.id===id)){this.commit(dd=>({sizes:dd.sizes.includes(id)?dd.sizes:[...dd.sizes,id]}));return;}this.commit(dd=>({customSizes:[...dd.customSizes,{id,w,h,group:'Egyedi',label:'Egyedi méret'}],sizes:[...dd.sizes,id]}));this.setState({cw:'',ch:''});},
+      fmtSeg:this.seg([{v:'png',label:'PNG'},{v:'jpg',label:'JPG'}],d.format,v=>this.commit({format:v})),scaleSeg:this.seg([{v:1,label:'1×'},{v:2,label:'2×'}],d.scale,v=>this.commit({scale:v})),
+      isJpg:d.format==='jpg',qualityVal:Math.round(d.quality*100),qualityPct:`${Math.round(d.quality*100)}%`,onQuality:e=>this.commit({quality:Number(e.target.value)/100},'q'),
+      maskTg:this.tg(st.safeMask,'',()=>this.setState({safeMask:!st.safeMask})),
+      bulkSeg:this.seg([{v:'all',label:'Minden kombináció'},{v:'pairs',label:'Csak mentett párosok'}],d.bulkSource,v=>this.commit({bulkSource:v})),
+      comboText:`${dims.join(' × ')} = ${items.length} banner`,includedText:`${included} letöltésre kész${items.length-included?` · ${items.length-included} kizárva`:''} · ${d.format.toUpperCase()} ${d.scale}×`,
+      zipLabel:st.zip?`ZIP: ${st.zip}`:`ZIP letöltése (${included})`,downloadZip:()=>{if(!st.zip)this.downloadZip();},noItems:!items.length,gridItems,
+      prevStep:()=>this.setState({step:Math.max(1,st.step-1)},()=>this.scheduleRender()),nextStep:()=>this.setState({step:Math.min(4,st.step+1)},()=>this.scheduleRender()),
+      prevVis:st.step>1?'visible':'hidden',nextVis:st.step<4?'visible':'hidden',nextLabel:['','Tovább: termék →','Tovább: sablon + szöveg →','Tovább: méretek + export →',''][st.step],
+      showAside:st.step<4,pv,pvSizes,
+      editOpen:!!ek,ed,closeEdit:()=>this.setState({editKey:null}),
+      projOpen:st.projOpen,closeProjects:()=>this.setState({projOpen:false}),noProjects:!st.projects.length,
+      projects:st.projects.map(p=>({name:p.name,meta:`${fmt(p.savedAt)} · ${(p.doc.images||[]).length} kép · ${(p.doc.pairs||[]).length} páros`,load:()=>this.loadDoc(p.doc),del:async()=>{await DB.del(p.name);this.openProjects();}})),
+      newProject:()=>this.loadDoc({...DEFAULT_DOC,projectName:'Új kampány'}),
+      exportJson:()=>dl(new Blob([JSON.stringify({app:'fitactive-banner',v:1,doc:d})],{type:'application/json'}),`${slug(d.projectName)}.fitactive.json`),
+      pickJson:()=>this.jsonRef.current&&this.jsonRef.current.click(),
+      onJsonFile:async e=>{const f=e.target.files[0];e.target.value='';if(!f)return;try{const j=JSON.parse(await f.text());if(!j.doc)throw 0;this.loadDoc(j.doc);}catch(err){this.toastMsg('Ez nem FitActive projektfájl.');}},
+      hasToast:!!st.toast,toast:st.toast,
+      locked:!st.unlocked,pw:st.pw||'',pwErr:!!st.pwErr,pwBorder:st.pwErr?'#B85C38':'rgba(59,74,44,.2)',
+      onPw:e=>this.setState({pw:e.target.value,pwErr:false}),
+      tryUnlock:async e=>{e.preventDefault();let h='';try{const b=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(st.pw||''));h=[...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,'0')).join('');}catch(err){}
+        if(h===PW_HASH){try{localStorage.setItem('fitactive-banner-unlock',PW_HASH);}catch(err){}this.setState({unlocked:true,pw:''});}else this.setState({pwErr:true});}
+    };
+  }
+}
+</script>
+</body>
+</html>
